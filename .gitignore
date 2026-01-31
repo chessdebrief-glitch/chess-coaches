@@ -2,6 +2,7 @@
 temp/
 data/
 exports/
+poubelle/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

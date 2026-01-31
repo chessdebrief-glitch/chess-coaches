@@ -1,42 +1,78 @@
-/* Reset des boutons Streamlit pour les transformer en cartes */
-div.stButton > button {
-    width: 100% !important;
-    height: 180px !important;
-    border-radius: 15px !important;
-    border: 1px solid #444 !important;
-    background-color: #1e1e1e !important;
-    color: white !important;
-    transition: all 0.2s ease-in-out !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    white-space: pre-wrap !important; /* Permet les retours à la ligne \n */
+/* style.css */
+.main-title { 
+    text-align: center; 
+    color: white; 
+    font-size: 3rem; 
+    font-weight: 800; 
+    margin-bottom: 2rem; 
 }
 
-/* Effet au survol */
-div.stButton > button:hover {
-    border-color: #2196F3 !important;
-    transform: translateY(-3px);
+.step-header { 
+    color: #2196F3; 
+    font-weight: 800;        /* Plus gras pour l'impact */
+    font-size: 1.8rem;      /* Augmenté (était à 1.2rem) */
+    margin-top: 3.5rem; 
+    margin-bottom: 1.5rem; 
+    text-transform: uppercase; 
+    text-align: center; 
+    letter-spacing: 2px;    /* Respire mieux en grand format */
+    display: block;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    padding-top: 5px;
 }
 
-/* L'ÉTAT SÉLECTIONNÉ (La magie opère ici) */
-/* On cible le bouton qui se trouve à l'intérieur de notre div .selected-coach */
-.selected-coach div.stButton > button {
+.coach-card {
+    padding: 12px 8px;
+    border-radius: 12px;
+    border: 1px solid #333;
+    background-color: #1e1e1e;
+    text-align: center;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.coach-card.selected {
     border: 2px solid #00FF00 !important;
     background-color: #1a2e1a !important;
-    box-shadow: 0 0 15px rgba(0, 255, 0, 0.15) !important;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+    transform: translateY(-5px);
 }
 
-/* Style par défaut pour tous les boutons de coach */
-div.normal-coach div.stButton > button {
-    border: 1px solid #333 !important;
-    background-color: #1e1e1e !important;
+.coach-emoji { font-size: 2.2rem; margin-bottom: 8px; }
+.coach-name { font-weight: bold; font-size: 1rem; color: white; display: block; margin-bottom: 5px; }
+.coach-desc { font-size: 0.75rem; color: #aaa; line-height: 1.2; }
+
+.coach-vibe { 
+    font-size: 0.65rem; 
+    color: #2196F3; /* Une couleur qui claque pour le style */
+    text-transform: uppercase; 
+    letter-spacing: 1px;
+    font-weight: 700;
+    border-top: 1px solid #333;
+    padding-top: 5px;
+    width: 100%;
 }
 
-/* Style FORCÉ pour le bouton sélectionné */
-div.selected-coach div.stButton > button {
-    border: 3px solid #00FF00 !important; /* Liseré vert épais */
-    background-color: #1a2e1a !important; /* Fond légèrement vert */
-    box-shadow: 0 0 15px rgba(0, 255, 0, 0.2) !important;
+.coach-quote {
+    text-align: center;
+    font-style: italic;
+    color: #888;
+    margin-top: 15px;
+    font-size: 0.9rem;
+    min-height: 1.2rem;
+}
+
+/* Cible les boutons Streamlit spécifiquement */
+div.stButton > button {
+    border-radius: 8px !important;
+    text-transform: uppercase;
+    font-size: 0.7rem !important;
+    font-weight: 700 !important;
 }
