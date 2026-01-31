@@ -1,31 +1,46 @@
 MENTORS = [
     {
-        "id": "zen",
-        "nom": "Maître Zen",
-        "emoji": "🧘",
-        "desc": "L'équilibre avant tout. Il t'apprend la résilience et le calme dans le chaos.",
-        "vibe": "Paix, harmonie et acceptation."
-    },
-    {
         "id": "prof",
-        "nom": "Prof de Club",
+        "nom": "Le prof de Club",
         "emoji": "👨‍🏫",
         "desc": "Le gardien des principes. Il ne tolère aucune entorse aux bases fondamentales.",
         "vibe": "Rigueur, structure et pédagogie."
+        "punchlines": {
+            "nom": "Rappelle-moi ton nom, qu'on ressorte ton dossier.",
+            "elo": "On en est où de ton classement ? Toujours en progression, j'espère.",
+            "pgn": "Montre-moi ta dernière partie. Voyons si les leçons ont été retenues."
+        }
     },
     {
         "id": "blitz",
-        "nom": "Blitz-King",
+        "nom": "L'arnacoeur",
         "emoji": "⚡",
         "desc": "Le pirate des échiquiers. Il vit pour l'arnaque, le bluff et la pendule.",
         "vibe": "Chaos, psychologie et culot."
     },
     {
         "id": "boa",
-        "nom": "BOA Constrictor",
+        "nom": "Le Boa Constrictor",
         "emoji": "🐍",
         "desc": "L'art de l'étouffement. Il déteste le risque et préfère supprimer tout espoir.",
         "vibe": "Contrôle, prophylaxie et propreté."
+        "punchlines": {
+            "nom": "Identité du joueur à évaluer ?",
+            "elo": "Précisez votre classement pour l'étalonnage technique.",
+            "pgn": "Soumettez le fichier PGN pour extraction des données."
+        }
+    },
+        {
+        "id": "zen",
+        "nom": "Le Maître Zen",
+        "emoji": "🧘",
+        "desc": "L'équilibre avant tout. Il t'apprend la résilience et le calme dans le chaos.",
+        "vibe": "Paix, harmonie et acceptation."
+        "punchlines": {
+            "nom": "Identité du joueur à évaluer ?",
+            "elo": "Précisez votre classement pour l'étalonnage technique.",
+            "pgn": "Soumettez le fichier PGN pour extraction des données."
+        }
     }
 ]
 

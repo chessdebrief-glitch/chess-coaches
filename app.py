@@ -10,11 +10,7 @@ state_manager.init_state()
 
 ui_components.header_section()
 
-ui_components.step_title(1, "Ton Surnom")
-prenom_raw = st.text_input("Surnom", placeholder="Garry", label_visibility="collapsed")
-prenom = "".join(x for x in prenom_raw if x.isalnum())[:20] or "Ami"
-
-ui_components.step_title(2, "Choisi ton coach")
+ui_components.step_title(1, "Choisis ton mentor")
 cols = st.columns(len(MENTORS))
 for i, m in enumerate(MENTORS):
     with cols[i]:
@@ -22,6 +18,19 @@ for i, m in enumerate(MENTORS):
         if ui_components.mentor_card(m['id'], m['nom'], m['emoji'], m['desc'],m['vibe'], is_sel):
             state_manager.set_coach(m)
             st.rerun()
+
+ui_components.step_title(1, "Comment t'apelles-tu disciple ?")
+prenom_raw = st.text_input("Surnom", placeholder="Garry", label_visibility="collapsed")
+prenom = "".join(x for x in prenom_raw if x.isalnum())[:20] or "Ami"
+
+# Dans app.py
+ui_components.step_title(2, "Dis moi ton rang sur l'échiquier")
+user_elo = ui_components.elo_selector()
+
+# Lors de la création du JSON pour l'IA :
+#payload["players"]["user"]["elo_rating"] = user_elo
+
+
 
 ui_components.step_title(3, "Ta partie")
 label_couleur = "⚪ BLANCS" if st.session_state.joueur_est_blanc else "⚫ NOIRS"
@@ -58,5 +67,39 @@ button_label = actions.get(st.session_state.coach['id'], "🔍 Analyser la parti
 
 # 4. ACTION
 if st.button(button_label, type="primary", use_container_width=True):
-    # Appel de la logique métier centralisée
-    main.run_full_analysis(pgn_input, prenom, st.session_state.coach, st.session_state.joueur_est_blanc)
+    if not pgn_input:
+        st.warning("Hé ! Il me faut un PGN pour travailler.")
+    else:
+        with st.spinner("Génération du prompt..."):
+            # On récupère les données pour le debug
+            coach_data = st.session_state.coach
+            
+            # --- ZONE DEBUG : RÉCUPÉRATION DU PROMPT ---
+            from constants import PROMPT_TEMPLATE
+            from langchain_core.prompts import ChatPromptTemplate
+            
+            # On simule ce que fait ai_engine pour voir le texte final
+            prompt_obj = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+            prompt_final = prompt_obj.format(
+                pgn=pgn_input,
+                coach_nom=coach_data["nom"],
+                coach_style=coach_data["desc"],
+                coach_vibe=coach_data["vibe"],
+                user_name=prenom
+            )
+            
+            # Affichage du prompt pour que tu puisses le copier
+            with st.expander("🔍 VOIR LE PROMPT ENVOYÉ (DEBUG)"):
+                st.code(prompt_final, language="text")
+            # ------------------------------------------
+
+            # Appel de la logique métier (qui renvoie le mock en mode debug)
+            resultat_analyse = main.run_full_analysis(
+                pgn_input, 
+                prenom, 
+                coach_data, 
+                st.session_state.joueur_est_blanc
+            )
+            
+            st.markdown("---")
+            st.markdown(resultat_analyse, unsafe_allow_html=True)

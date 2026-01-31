@@ -35,3 +35,26 @@ def header_section(title: str = "♔ LE DÉBRIEF"):
 def step_title(num: int, text: str):
     safe_text = escape(text)
     st.markdown(f'<p class="step-header">{num}. {safe_text}</p>', unsafe_allow_html=True)
+
+def elo_selector():
+    """Composant de sélection du niveau ELO."""
+    # On utilise une colonne pour centrer ou ajuster le slider
+    elo = st.slider(
+        label="Glisse pour définir ton niveau",
+        min_value=1000,
+        max_value=2500,
+        value=1500,
+        step=50,
+        help="Ceci aide le coach à adapter ses explications à ton niveau technique."
+    )
+    
+    # Petit feedback visuel sur le niveau
+    if elo < 1400:
+        label = "Débutant / Intermédiaire"
+    elif elo < 1900:
+        label = "Confirmé"
+    else:
+        label = "Expert / Maître"
+        
+    st.info(f"Niveau configuré : **{elo}** ({label})")
+    return elo
