@@ -19,20 +19,20 @@ for i, m in enumerate(MENTORS):
             state_manager.set_coach(m)
             st.rerun()
 
-ui_components.step_title(1, "Comment t'apelles-tu disciple ?")
+titre_nom = st.session_state.coach['punchlines'].get('nom', "Comment t'appelles-tu ?")
+ui_components.step_title(1, titre_nom)
 prenom_raw = st.text_input("Surnom", placeholder="Garry", label_visibility="collapsed")
 prenom = "".join(x for x in prenom_raw if x.isalnum())[:20] or "Ami"
 
-# Dans app.py
-ui_components.step_title(2, "Dis moi ton rang sur l'échiquier")
+titre_elo = st.session_state.coach['punchlines'].get('elo', "elo ?")
+ui_components.step_title(2, titre_elo)
 user_elo = ui_components.elo_selector()
 
 # Lors de la création du JSON pour l'IA :
 #payload["players"]["user"]["elo_rating"] = user_elo
 
-
-
-ui_components.step_title(3, "Ta partie")
+titre_partie = st.session_state.coach['punchlines'].get('pgn', "pgn ?")
+ui_components.step_title(3, titre_partie)
 label_couleur = "⚪ BLANCS" if st.session_state.joueur_est_blanc else "⚫ NOIRS"
 st.toggle(label_couleur, key="joueur_est_blanc") # Streamlit gère le lien auto avec la clé
 
@@ -62,8 +62,7 @@ actions = {
     "boa": f"{st.session_state.coach['nom']}, montre-moi où j'ai serré..."
 }
 
-# On récupère le texte, avec un fallback sécurisé
-button_label = actions.get(st.session_state.coach['id'], "🔍 Analyser la partie")
+button_label =st.session_state.coach['punchlines'].get('analyse', "analyse ?")
 
 # 4. ACTION
 if st.button(button_label, type="primary", use_container_width=True):
