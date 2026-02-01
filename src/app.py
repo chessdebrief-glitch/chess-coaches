@@ -1,6 +1,6 @@
 # app.py (version ultra-découpée)
 import streamlit as st
-import main, ui_styles, ui_components, state_manager
+import ui_styles, ui_components, state_manager
 from constants import MENTORS
 
 # Setup
@@ -69,36 +69,26 @@ if st.button(button_label, type="primary", use_container_width=True):
     if not pgn_input:
         st.warning("Hé ! Il me faut un PGN pour travailler.")
     else:
-        with st.spinner("Génération du prompt..."):
-            # On récupère les données pour le debug
-            coach_data = st.session_state.coach
-            
-            # --- ZONE DEBUG : RÉCUPÉRATION DU PROMPT ---
-            from constants import PROMPT_TEMPLATE
-            from langchain_core.prompts import ChatPromptTemplate
-            
-            # On simule ce que fait ai_engine pour voir le texte final
-            prompt_obj = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-            prompt_final = prompt_obj.format(
-                pgn=pgn_input,
-                coach_nom=coach_data["nom"],
-                coach_style=coach_data["desc"],
-                coach_vibe=coach_data["vibe"],
-                user_name=prenom
-            )
-            
-            # Affichage du prompt pour que tu puisses le copier
-            with st.expander("🔍 VOIR LE PROMPT ENVOYÉ (DEBUG)"):
-                st.code(prompt_final, language="text")
-            # ------------------------------------------
-
-            # Appel de la logique métier (qui renvoie le mock en mode debug)
-            resultat_analyse = main.run_full_analysis(
-                pgn_input, 
-                prenom, 
-                coach_data, 
-                st.session_state.joueur_est_blanc
-            )
-            
-            st.markdown("---")
-            st.markdown(resultat_analyse, unsafe_allow_html=True)
+        # --- ÉTAPE DE VALIDATION ---
+        from src.chess_engine import validate_pgn  # Importe ta fonction blindée
+        
+        game, error_message = validate_pgn(pgn_input)
+        
+        if error_message:
+            # On affiche l'erreur à l'utilisateur de manière stylée
+            st.error(f"⚠️ Problème avec ton PGN")
+            st.info(error_message) # Ton message d'erreur détaillé (ex: "Coup illégal...")
+        else:
+            # SI VALIDE, on continue la logique
+            with st.spinner(f"Analyse par {st.session_state.coach['nom']}..."):
+                # On peut passer 'game' (déjà parsé) à main.run_full_analysis 
+                # pour éviter de le parser deux fois
+                resultat_analyse = main.run_full_analysis(
+                    pgn_input, 
+                    prenom, 
+                    st.session_state.coach, 
+                    st.session_state.joueur_est_blanc
+                )
+                
+                st.markdown("---")
+                st.markdown(resultat_analyse, unsafe_allow_html=True)
