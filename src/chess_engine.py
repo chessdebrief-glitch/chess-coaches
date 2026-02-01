@@ -6,29 +6,52 @@ import chess.pgn
 import io
 
 def validate_pgn(pgn_string):
+    """
+    Valide une chaîne PGN et la charge en tant qu'objet partie.
+
+    Retourne un tuple (game, error_message).
+    - Si la validation réussit, retourne (objet game, None).
+    - Si la validation échoue, retourne (objet game partiel ou None, message d'erreur).
+    """
     # 1. On élimine le vide ou les espaces
     if not pgn_string or not pgn_string.strip():
-        return None
-        
+        return None, "Le PGN fourni est vide."
     pgn_io = io.StringIO(pgn_string)
     
     # 2. Tentative de lecture par le parser
-    game = chess.pgn.read_game(pgn_io)
-    
+    try:
+        game = chess.pgn.read_game(pgn_io)
+    except Exception as e:
+        return None, f"Erreur lors de la lecture du PGN: {e}"
     # 3. Si le parser n'a rien trouvé (ex: texte aléatoire)
     if game is None:
-        return None
-
+        return None, "Format PGN invalide ou texte illisible."
     # 4. On vérifie s'il y a des erreurs de syntaxe (ex: 1. e55)
     if game.errors:
-        return None
+        return game, f"Erreur de syntaxe dans le PGN : {game.errors[0]}"
 
-    # 5. On vérifie que le jeu n'est pas "vide" (au moins un coup ou des en-têtes)
-    # Si on veut forcer la présence de coups, on peut utiliser : if not game.move_stack
-    if not game.headers and not list(game.mainline()):
-        return None
+# 5. On vérifie que le jeu contient des données
+    # On accepte le jeu si : il y a des coups OU si un header au moins est rempli (pas "?")
+    has_moves = not game.is_end()
+    # On vérifie si au moins un des headers standards contient autre chose que "?"
+    important_headers = ["Event", "White", "Black", "FEN"]
+    has_headers = any(game.headers.get(h, "?") != "?" for h in important_headers)
 
-    return game
+    if not has_moves and not has_headers:
+        return game, "Le PGN ne contient ni en-têtes valides ni coups."
+
+    # 6. Vérification des coups légaux
+    board = game.board()
+    try:
+        for move in game.mainline_moves():
+            if move not in board.legal_moves:
+                return game, f"Coup illégal détecté: {move.uci()}"
+            board.push(move)
+    except Exception as e:
+        return game, f"Erreur lors de la vérification des coups légaux: {e}"
+
+    # Si tout est en ordre
+    return game, None
 
 def extract_evals(game):
     evals = [0.0]
