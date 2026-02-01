@@ -3,6 +3,7 @@ temp/
 data/
 exports/
 poubelle/
+.continue
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
