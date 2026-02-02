@@ -1,10 +1,10 @@
 import chess.pgn
 import io
 import re
+import streamlit as st
 
-import chess.pgn
-import io
 
+@st.cache_data
 def validate_pgn(pgn_string):
     """
     Valide une chaîne PGN et la charge en tant qu'objet partie.

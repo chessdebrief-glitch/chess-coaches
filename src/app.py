@@ -42,79 +42,75 @@ pgn_exemple = (
     "3. Bc4 { [%eval 0.15] } Nf6 { [%eval 0.28] }..."
 )
 
+# --- ÉTAPE 4 : INPUT PGN ---
+ui_components.step_title(4, titre_partie)
+
 st.caption("""
-    📥 Copie-colle ton PGN depuis Chess.com ou Lichess.⚠️ Pour une analyse précise, assure-toi d'inclure les **évaluations d'ordinateur** (clique sur 'Analyse' avant d'exporter).
+    📥 Copie-colle ton PGN avec les **évaluations**.
 """)
 
 pgn_input = st.text_area(
     "PGN", 
     height=150, 
-    placeholder=pgn_exemple, # On injecte l'exemple ici
+    placeholder=pgn_exemple, 
     label_visibility="collapsed"
 )
 
-# Add move selection slider
-
+# Initialisation des variables par défaut pour éviter les erreurs plus bas
 game = None
 move_range = (1, 50)
 
 if pgn_input:
     from src.chess_engine import validate_pgn
+    
+    # Grâce au @st.cache_data, cette ligne est instantanée si on bouge juste le slider
     game, error_message = validate_pgn(pgn_input)
 
     if error_message:
-        st.error(f"⚠️ Problème avec ton PGN")
+        st.error("⚠️ PGN invalide")
         st.info(error_message)
     else:
-        # ÉTAPE RÉUSSIE : Le PGN est là et il est valide
-        # On calcule le nombre réel de coups pour le slider
+        # --- ÉTAPE RÉUSSIE : ON EST DANS L'ENTONNOIR ---
+        st.success("PGN valide !")
+        
+        # 1. Calcul de la longueur de la partie
         total_moves = 0
         temp_game = game
         while temp_game.next():
             total_moves += 1
             temp_game = temp_game.next()
-        
-        # Affichage du slider (maintenant que c'est validé)
-        st.success("PGN valide ! Ajuste la plage d'analyse si besoin :")
+
+        # 2. Affichage du Slider (apparaît seulement si PGN OK)
         move_range = st.slider(
-            "Quelle plage de coups veux-tu analyser ?",
+            "Plage d'analyse :",
             min_value=1,
             max_value=max(1, total_moves),
             value=(1, min(50, total_moves)),
         )
 
-                
-# 4. ACTION
-# Dans app.py, juste avant le bouton d'action
-button_label =st.session_state.coach['punchlines'].get('analyse', "analyse ?")
-
-# 4. ACTION
-if st.button(button_label, type="primary", use_container_width=True):
-    if not pgn_input:
-        st.warning("Hé ! Il me faut un PGN pour travailler.")
-    else:
-        # --- ÉTAPE DE VALIDATION ---
-        from src.chess_engine import validate_pgn  # Importe ta fonction blindée
+# 3. Affichage du Bouton d'Action
+        button_label = st.session_state.coach['punchlines'].get('analyse', "Analyser")
         
-        game, error_message = validate_pgn(pgn_input)
-        
-        if error_message:
-            # On affiche l'erreur à l'utilisateur de manière stylée
-            st.error(f"⚠️ Problème avec ton PGN")
-            st.info(error_message) # Ton message d'erreur détaillé (ex: "Coup illégal...")
-        else:
-            # SI VALIDE, on continue la logique
-            with st.spinner(f"Analyse par {st.session_state.coach['nom']}..."):
-                # On peut passer 'game' (déjà parsé) à main.run_full_analysis 
-                # pour éviter de le parser deux fois
-                resultat_analyse = main.run_full_analysis(
-                    pgn_input,
-                    prenom,
-                    st.session_state.coach,
-                    st.session_state.joueur_est_blanc,
-                    move_range=move_range  # Pass the move range to the analysis function
-                )
-                
-                st.markdown("---")
-                st.markdown(resultat_analyse, unsafe_allow_html=True)
+    if st.button(button_label, type="primary", use_container_width=True):
+        # --- CONSTRUCTION DU PAYLOAD ---
+        payload = {
+            "user": {
+                "name": prenom,
+                "elo": user_elo,
+                "is_white": st.session_state.joueur_est_blanc
+            },
+            "coach": st.session_state.coach, # id, nom, emoji, desc, vibe, punchlines
+            "analysis_settings": {
+                "move_range": move_range,
+                "pgn_raw": pgn_input
+            }
+        }
 
+        with st.spinner(f"Analyse par {st.session_state.coach['nom']}..."):
+            # On envoie le payload complet à la fonction de traitement
+            from src.analysis_engine import run_analysis_flow
+            
+            resultat_analyse = run_analysis_flow(payload)
+            
+            st.markdown("---")
+            st.markdown(resultat_analyse, unsafe_allow_html=True)
