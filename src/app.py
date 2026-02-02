@@ -53,15 +53,39 @@ pgn_input = st.text_area(
     label_visibility="collapsed"
 )
 
+# Add move selection slider
+
+game = None
+move_range = (1, 50)
+
+if pgn_input:
+    from src.chess_engine import validate_pgn
+    game, error_message = validate_pgn(pgn_input)
+
+    if error_message:
+        st.error(f"⚠️ Problème avec ton PGN")
+        st.info(error_message)
+    else:
+        # ÉTAPE RÉUSSIE : Le PGN est là et il est valide
+        # On calcule le nombre réel de coups pour le slider
+        total_moves = 0
+        temp_game = game
+        while temp_game.next():
+            total_moves += 1
+            temp_game = temp_game.next()
+        
+        # Affichage du slider (maintenant que c'est validé)
+        st.success("PGN valide ! Ajuste la plage d'analyse si besoin :")
+        move_range = st.slider(
+            "Quelle plage de coups veux-tu analyser ?",
+            min_value=1,
+            max_value=max(1, total_moves),
+            value=(1, min(50, total_moves)),
+        )
+
+                
 # 4. ACTION
 # Dans app.py, juste avant le bouton d'action
-actions = {
-    "zen": f"{st.session_state.coach['nom']}, guide mon esprit...",
-    "prof": f"{st.session_state.coach['nom']}, corrige ma copie",
-    "blitz": f"{st.session_state.coach['nom']}, montre-moi l'arnaque !",
-    "boa": f"{st.session_state.coach['nom']}, montre-moi où j'ai serré..."
-}
-
 button_label =st.session_state.coach['punchlines'].get('analyse', "analyse ?")
 
 # 4. ACTION
@@ -84,11 +108,13 @@ if st.button(button_label, type="primary", use_container_width=True):
                 # On peut passer 'game' (déjà parsé) à main.run_full_analysis 
                 # pour éviter de le parser deux fois
                 resultat_analyse = main.run_full_analysis(
-                    pgn_input, 
-                    prenom, 
-                    st.session_state.coach, 
-                    st.session_state.joueur_est_blanc
+                    pgn_input,
+                    prenom,
+                    st.session_state.coach,
+                    st.session_state.joueur_est_blanc,
+                    move_range=move_range  # Pass the move range to the analysis function
                 )
                 
                 st.markdown("---")
                 st.markdown(resultat_analyse, unsafe_allow_html=True)
+
