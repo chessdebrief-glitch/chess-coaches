@@ -1,6 +1,5 @@
 .streamlit/
 temp/
-data/
 exports/
 poubelle/
 .continue

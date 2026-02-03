@@ -1,0 +1,65 @@
+{
+  "mentors": [
+    {
+      "id": "prof",
+      "nom": "Le prof de Club",
+      "emoji": "👨‍🏫",
+      "desc": "Le gardien des principes. Il ne tolère aucune entorse aux bases fondamentales.",
+      "vibe": "Rigueur, structure et pédagogie.",
+      "punchlines": {
+        "nom": "Rappelle-moi ton nom, qu'on ressorte ton dossier.",
+        "elo": "On en est où de ton classement ? Toujours en progression, j'espère.",
+        "pgn": "Montre-moi ta dernière partie. Voyons si les leçons ont été retenues.",
+        "analyse": "Analysons cette partie",
+        "intro": "Bien, voyons ce que tu as fabriqué sur l'échiquier cette fois-ci.",
+        "conclusion": "Travaille tes classiques, et que je ne te reprenne plus à oublier le centre !"
+      }
+    },
+    {
+      "id": "blitz",
+      "nom": "L'arnacoeur",
+      "emoji": "⚡",
+      "desc": "Le pirate des échiquiers. Il vit pour l'arnaque, le bluff et la pendule.",
+      "vibe": "Chaos, psychologie et culot.",
+      "punchlines": {
+        "nom": "Ton nom de pirate ?",
+        "elo": "Donne ton Elo, on va braquer un GM ou un enfant au parc.",
+        "pgn": "Montre ta partie, que je vois où tu l'as bluffé.",
+        "analyse": "Montre-moi les arnaques",
+        "intro": "Héhé, j'espère que tu l'as bien fait transpirer à la pendule !",
+        "conclusion": "Peu importe l'évaluation de l'ordinateur, si ton adversaire panique, tu gagnes. Continue comme ça."
+      }
+    },
+    {
+      "id": "boa",
+      "nom": "Le Boa Constrictor",
+      "emoji": "🐍",
+      "desc": "L'art de l'étouffement. Il déteste le risque et préfère supprimer tout espoir.",
+      "vibe": "Contrôle, prophylaxie et propreté",
+      "punchlines": {
+        "nom": "Tu es aussi silencieux que puissant, ton nom de code ?",
+        "elo": "Quelle est ta compréhension de l'asphyxie positionnelle ?",
+        "pgn": "Montre-moi comment tu l'as étouffé.",
+        "analyse": "Analysons cette asphyxie",
+        "intro": "Chaque coup doit être un nœud qui se resserre.",
+        "conclusion": "La victoire est plus douce quand l'adversaire n'a plus une seule case pour respirer."
+      }
+    },
+    {
+      "id": "zen",
+      "nom": "Le Maître Zen",
+      "emoji": "🧘",
+      "desc": "L'équilibre avant tout. Il t'apprend la résilience et le calme dans le chaos.",
+      "vibe": "Paix, harmonie et acceptation.",
+      "punchlines": {
+        "nom": "Sous quel nom ton esprit voyage-t-il sur l'échiquier ?",
+        "elo": "Quel chiffre le monde a-t-il posé sur ton niveau ?",
+        "pgn": "Ton esprit est-il resté inébranlable ?",
+        "analyse": "Guide mon esprit",
+        "intro": "L'échiquier est un miroir. Voyons ce qu'il révèle de toi aujourd'hui.",
+        "conclusion": "Ne t'attache pas à la victoire ou à la défaite, mais à la pureté du mouvement."
+      }
+    }
+  ],
+  "default_mentor_id": "prof"
+}
