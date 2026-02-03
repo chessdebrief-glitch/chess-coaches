@@ -1,6 +1,6 @@
 # src/state_manager.py
 import streamlit as st
-from constants import DEFAULT_COACH
+from .constants import DEFAULT_COACH # ✅ Le "." signifie "dans le même dossier que moi"
 from src.mentor import Mentor
 
 def init_state():

@@ -1,7 +1,13 @@
 import streamlit as st
-import ui_styles, ui_components, state_manager
-from constants import MENTORS
-from src.mentor import Mentor # Import de la classe
+
+# Import des modules d'interface situés dans le dossier src
+from src import ui_styles, ui_components, state_manager
+
+# Import des constantes et des classes techniques
+from src.constants import MENTORS
+from src.mentor import Mentor
+from src.analysis_engine import run_analysis_flow
+from src.prompt_builder import PromptBuilder
 
 # Setup
 st.set_page_config(page_title="Le Débrief", layout="centered")
