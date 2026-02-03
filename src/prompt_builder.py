@@ -6,67 +6,91 @@ class PromptBuilder:
         self.mentor = mentor
         self.analyzer = analyzer
 
+    # --- BLOCS DE CONSTRUCTION (PRIVES) ---
+
+    def _get_identity_header(self):
+        return f"""
+        TON IDENTITÉ :
+        Tu es {self.mentor.nom}.
+        Style : {self.mentor.vibe}.
+        Personnalité : {self.mentor.desc}
+        Ton : {self.mentor.get_punchline('intro')}
+        
+        CONSIGNES DE TON :
+        - Ne sors jamais de ton personnage.
+        - Sois direct, pas de blabla d'IA générique.
+        """
+
+    def _get_technical_constraints(self):
+        return """
+        CONTRAINTES DE FORMATAGE (STRICTES) :
+        - Langue : Français exclusivement.
+        - Notation : Algébrique française (ex: Cf3, exd5, O-O).
+        - Style : Markdown (titres #, gras **, listes *).
+        - INTERDICTION d'introduction ou de conclusion polie.
+        - PLACEHOLDERS OBLIGATOIRES : 
+          Utilise {{CHART_EVAL_TENSION}}, {{STATS_TABLE}} et {{DIAGRAM_MOMENT_XX_Y}} 
+          (où XX est le coup et Y est W ou B).
+        """
+
+    def _get_data_body(self, move_range, moments):
+        stats = self.analyzer.get_stats()
+        # On passe move_range à l'export pour ne donner que les coups utiles
+        history = self.analyzer.export_for_ai(move_range)
+        moments_txt = self._format_moments(moments)
+        
+        adversaire = self.analyzer.headers.get('Black' if self.user['is_white'] else 'White', 'Inconnu')
+        resultat = self.analyzer.headers.get('Result', 'En cours')
+
+        return f"""
+        DONNÉES DE LA PARTIE :
+        - Élève : {self.user['name']} ({self.user['elo']} ELO) vs {adversaire}
+        - Résultat : {resultat}
+        - Stats : {stats}
+        - Moments critiques détectés : 
+        {moments_txt}
+        - Historique des coups : {history}
+        """
+
     def _format_moments(self, moments):
         if not moments:
             return "Aucune gaffe majeure détectée sur cette séquence."
-        
-        lines = []
-        for m in moments:
-            lines.append(f"- Coup {m['move']} ({m['turn']}): {m['notation']} | Delta: {m['delta']} | {m['label']}")
+        lines = [f"- Coup {m['move']} ({m['turn']}): {m['notation']} | Delta: {m['delta']} | {m['label']}" for m in moments]
         return "\n".join(lines)
 
+    # --- ASSEMBLAGES SPÉCIFIQUES ---
+
+    def get_full_game_prompt(self, moments):
+        structure = """
+        MISSION : Analyse globale de la partie.
+        STRUCTURE DE LA RÉPONSE :
+        # Chapitre 1 : Identité de la partie {{CHART_EVAL_TENSION}} {{STATS_TABLE}}
+        # Chapitre 2 : L'Ouverture (Verdict du coach)
+        # Chapitre 3 : Moments Critiques (Analyse détaillée de chaque erreur listée)
+        # Chapitre 4 : Profil & Progrès (Ton avis final et un exercice {{DIAGRAM_MOMENT_XX_Y}})
+        """
+        return f"{self._get_identity_header()}\n{self._get_technical_constraints()}\n{structure}\n{self._get_data_body(None, moments)}"
+
+    def get_focus_prompt(self, move_range, moments):
+        structure = f"""
+        MISSION : Focus chirurgical sur les coups {move_range[0]} à {move_range[1]}.
+        STRUCTURE DE LA RÉPONSE :
+        # Analyse de la séquence (Pourquoi c'était le tournant ?)
+        # Zoom Tactique {{DIAGRAM_MOMENT_XX_Y}}
+        # Conseil spécifique pour cette phase de jeu
+        """
+        return f"{self._get_identity_header()}\n{self._get_technical_constraints()}\n{structure}\n{self._get_data_body(move_range, moments)}"
+
+    # --- LE POINT D'ENTRÉE UNIQUE ---
+
     def get_coach_prompt(self, move_range, moments):
-        # 1. On récupère les données traitées par l'analyzer
-        stats = self.analyzer.get_stats()
-        history = self.analyzer.export_for_ai(move_range)
-        moments_texte = self._format_moments(moments) # Ta fonction de formatage précédente
-        
-        # 2. On définit l'identité du Mentor (Couche Système)
-        identity_block = f"""
-        Tu es {self.mentor.nom}.
-        Description : {self.mentor.desc}
-        Ton style de coaching : {self.mentor.vibe}
         """
-
-        # 3. On injecte tes contraintes et la structure (Ta base actuelle)
-        # Note : On utilise les attributs de self.mentor pour personnaliser
-        structure_block = f"""
-        Contraintes :
-        - Parle avec ton ton "{self.mentor.vibe}".
-        - Pas d'introduction ni de conclusion générique (sois direct).
-        - Notation algébrique française (Cf3, d5, exd5).
-        - Placeholders obligatoires pour les images : {{{{DIAGRAM_MOMENT_XX_Y}}}}, {{{{CHART_EVAL_TENSION}}}}, {{{{STATS_TABLE}}}}.
-
-        Structure de ta réponse :
-        # Chapitre 1 : Identité de la partie
-        * Élève : {self.user['name']} vs {self.analyzer.headers.get('Black' if self.user['is_white'] else 'White')}
-        * Résultat : {self.analyzer.headers.get('Result')}
-        {{{{CHART_EVAL_TENSION}}}}
-        {{{{STATS_TABLE}}}}
-
-        # Chapitre 2 : Ouverture
-        * Nom de l'ouverture. Verdict du coach. 
-        * Si pertinent, ajoute un placeholder diagramme.
-
-        # Chapitre 3 : Moments Critiques
-        (Analyse ici les erreurs trouvées dans la liste fournie ci-dessous)
-        Pour chaque erreur majeure :
-        ## Erreur au coup XX
-        {{{{DIAGRAM_MOMENT_XX_Y}}}}
-        * Ton analyse de coach et l'alternative suggérée.
-
-        # Chapitre 4 : Profil & Progrès
-        * Ton avis sur le style de l'élève.
-        * Exercice final : {{{{DIAGRAM_MOMENT_XX_Y}}}}
+        Décide quel type de prompt générer en fonction du contexte.
         """
+        total_moves = len(self.analyzer.df)
+        is_full_game = move_range[0] <= 1 and move_range[1] >= (total_moves - 1)
 
-        # 4. On fournit la "Matière Première" (Les données de la partie)
-        data_block = f"""
-        DONNÉES DE LA PARTIE :
-        Stats : {stats}
-        Moments clés détectés par l'ordinateur : {moments_texte}
-        Historique des coups : {history}
-        """
-
-        # On assemble le tout
-        return f"{identity_block}\n\n{structure_block}\n\n{data_block}"
+        if is_full_game:
+            return self.get_full_game_prompt(moments)
+        else:
+            return self.get_focus_prompt(move_range, moments)
