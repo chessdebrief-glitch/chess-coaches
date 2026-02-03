@@ -81,32 +81,31 @@ Analyse cette séquence. Sois direct, pédagogique et garde ton style unique.
 
 # src/analysis_engine.py
 
-def run_analysis_flow(payload):
-    # 1. On génère le DataFrame ET on récupère l'objet game/headers
-    df, extra_info = prepare_analysis_data(
-        payload["analysis_settings"]["pgn_raw"],
-        payload["analysis_settings"]["move_range"]
-    )
+def run_analysis_flow(payload, analyzer):
+    """
+    Prend le payload (coach, user) et l'objet analyzer.
+    Retourne le prompt final et le DataFrame filtré.
+    """
+    move_range = payload["analysis_settings"]["move_range"]
     
-    # 2. On prépare un dictionnaire "segment" compatible avec ton prompt
-    # On reconstruit la séquence texte à partir du DataFrame propre
-    sequence_string = " ".join([f"{row.move}.{row.notation}" for _, row in df.iterrows()])
+    # 1. On récupère les données formatées pour l'IA
+    # On peut choisir le mode ici : soit tout, soit uniquement les moments critiques
+    moments_critiques = analyzer.get_critical_moments()
+    historique_compact = analyzer.export_for_ai(move_range)
+    stats = analyzer.get_stats()
+
+    # 2. Construction du Prompt (Logique à mettre dans PromptBuilder plus tard)
+    # Pour l'instant on simule le retour du prompt
+    prompt = f"""
+    MENTOR: {payload['coach']['nom']} (Vibe: {payload['coach']['vibe']})
+    ELEVE: {payload['user']['name']} ({payload['user']['elo']})
     
-    segment_compat = {
-        "fen": extra_info.get("fen", "N/A"),
-        "sequence": sequence_string,
-        "headers": extra_info.get("headers", {})
-    }
+    STATS PARTIE: {stats}
+    HISTORIQUE: {historique_compact}
+    MOMENTS CLES: {moments_critiques}
+    """
     
-    # 3. On génère le prompt
-    prompt = build_mentor_prompt(
-        payload["user"], 
-        payload["coach"], 
-        payload["analysis_settings"]["move_range"],
-        segment_compat
-    )
-    
-    return prompt, df
+    return prompt, analyzer.get_analysis_slice(move_range)
 
 def get_critical_moments(df, threshold=1.5):
     """

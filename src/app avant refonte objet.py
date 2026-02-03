@@ -58,38 +58,32 @@ game = None
 move_range = (1, 50)
 
 if pgn_input:
-    from src.chess_analyzer import ChessAnalyzer # Import de ta nouvelle classe
+    from src.chess_engine import validate_pgn
     
-    # ÉTAPE 1 : Validation via la méthode statique de la classe
-    game, error_message = ChessAnalyzer.validate_pgn(pgn_input)
+    # Grâce au @st.cache_data, cette ligne est instantanée si on bouge juste le slider
+    game, error_message = validate_pgn(pgn_input)
 
     if error_message:
-        st.error(f"⚠️ {error_message}")
+        st.error("⚠️ PGN invalide")
+        st.info(error_message)
     else:
+        # --- ÉTAPE RÉUSSIE : ON EST DANS L'ENTONNOIR ---
         st.success("PGN valide !")
         
-        # ÉTAPE 2 : On crée l'analyseur une seule fois ici
-        # On le met en cache pour ne pas recalculer le DataFrame au moindre clic
-        if "analyzer" not in st.session_state or st.session_state.pgn_prev != pgn_input:
-            st.session_state.analyzer = ChessAnalyzer(game)
-            st.session_state.pgn_prev = pgn_input
+        # 1. Calcul de la longueur de la partie
+        total_moves = 0
+        temp_game = game
+        while temp_game.next():
+            total_moves += 1
+            temp_game = temp_game.next()
 
-        analyzer = st.session_state.analyzer
-        
-        stats = analyzer.get_stats()
-        max_moves = stats.get("total_moves", 1)
-        
-        if max_moves > 1:
-            move_range = st.slider(
-                "Plage d'analyse :",
-                min_value=1,
-                max_value=max_moves,
-                value=(1, min(50, max_moves)),
-            )
-        else:
-            # S'il n'y a qu'un coup, on fixe la plage sans afficher le slider
-            st.info("Partie très courte détectée (1 seul coup).")
-            move_range = (1, 1)
+        # 2. Affichage du Slider (apparaît seulement si PGN OK)
+        move_range = st.slider(
+            "Plage d'analyse :",
+            min_value=1,
+            max_value=max(1, total_moves),
+            value=(1, min(50, total_moves)),
+        )
 
 # 3. Affichage du Bouton d'Action
     button_label = st.session_state.coach['punchlines'].get('analyse', "Analyser")
@@ -113,16 +107,9 @@ if pgn_input:
             from src.analysis_engine import run_analysis_flow
             
             # On récupère les DEUX éléments maintenant
-            # On passe bien les DEUX arguments : le dictionnaire payload ET l'objet analyzer
-            resultat_analyse, df_debug = run_analysis_flow(payload, st.session_state.analyzer)
+            resultat_analyse, df_debug = run_analysis_flow(payload)
             
             st.markdown("---")
-
-            # --- NOUVEAU : AFFICHAGE DU GRAPHIQUE ---
-            st.subheader("📈 Courbe d'évaluation")
-            fig = st.session_state.analyzer.generate_eval_chart(move_range)
-            if fig:
-                st.pyplot(fig)
 
             # 1. On affiche le DataFrame pour débugger (en haut, pour vérifier les données)
             ui_components.display_debug_data(df_debug)
