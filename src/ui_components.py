@@ -58,3 +58,37 @@ def elo_selector():
         
     st.info(f"Niveau configuré : **{elo}** ({label})")
     return elo
+
+def display_debug_data(df):
+    """Affiche proprement le DataFrame pour le debugging."""
+    if df is None or df.empty:
+        st.warning("⚠️ Aucune donnée à afficher pour le moment.")
+        return
+
+    with st.expander("🛠️ Debug : Inspection du DataFrame (Pandas)"):
+        st.write("Voici les données extraites pour l'analyse :")
+        
+        # On stylise un peu pour repérer les grosses variations d'éval
+        # (Delta négatif = erreur du joueur si on est Blanc)
+        st.dataframe(
+            df.style.background_gradient(subset=['eval'], cmap='RdYlGn'),
+            use_container_width=True
+        )
+        
+        # Petit résumé technique
+        cols = st.columns(3)
+        cols[0].metric("Nombre de positions", len(df))
+        if 'eval' in df.columns:
+            cols[1].metric("Eval Max", f"{df['eval'].max():.2f}")
+            cols[2].metric("Eval Min", f"{df['eval'].min():.2f}")
+
+
+# src/ui_components.py
+
+def display_critical_moments(df):
+    blunders = df[df['delta'].abs() >= 1.5] # Seuil de gaffe
+    
+    if not blunders.empty:
+        st.error(f"🚨 {len(blunders)} moment(s) critique(s) détecté(s) !")
+        # On affiche un tableau simplifié
+        st.table(blunders[['move', 'turn', 'notation', 'delta']])

@@ -42,9 +42,6 @@ pgn_exemple = (
     "3. Bc4 { [%eval 0.15] } Nf6 { [%eval 0.28] }..."
 )
 
-# --- ÉTAPE 4 : INPUT PGN ---
-ui_components.step_title(4, titre_partie)
-
 st.caption("""
     📥 Copie-colle ton PGN avec les **évaluations**.
 """)
@@ -89,7 +86,7 @@ if pgn_input:
         )
 
 # 3. Affichage du Bouton d'Action
-        button_label = st.session_state.coach['punchlines'].get('analyse', "Analyser")
+    button_label = st.session_state.coach['punchlines'].get('analyse', "Analyser")
         
     if st.button(button_label, type="primary", use_container_width=True):
         # --- CONSTRUCTION DU PAYLOAD ---
@@ -107,10 +104,16 @@ if pgn_input:
         }
 
         with st.spinner(f"Analyse par {st.session_state.coach['nom']}..."):
-            # On envoie le payload complet à la fonction de traitement
             from src.analysis_engine import run_analysis_flow
             
-            resultat_analyse = run_analysis_flow(payload)
+            # On récupère les DEUX éléments maintenant
+            resultat_analyse, df_debug = run_analysis_flow(payload)
             
             st.markdown("---")
+
+            # 1. On affiche le DataFrame pour débugger (en haut, pour vérifier les données)
+            ui_components.display_debug_data(df_debug)
+
+            # 2. On affiche le résultat (le prompt pour l'instant, plus tard la réponse IA)
+            st.markdown("### 🤖 Analyse du Mentor")
             st.markdown(resultat_analyse, unsafe_allow_html=True)
