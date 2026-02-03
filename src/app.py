@@ -1,7 +1,7 @@
-# app.py (version ultra-découpée)
 import streamlit as st
 import ui_styles, ui_components, state_manager
 from constants import MENTORS
+from src.mentor import Mentor # Import de la classe
 
 # Setup
 st.set_page_config(page_title="Le Débrief", layout="centered")
@@ -10,72 +10,70 @@ state_manager.init_state()
 
 ui_components.header_section()
 
+with st.sidebar:
+    st.title("⚙️ Réglages")
+    mode_ia = st.toggle("Activer l'IA (Gemini)", value=False) # Off par défaut = Debug
+    run_mode = "api" if mode_ia else "debug"
+
+# 1. Sélection du Mentor
 ui_components.step_title(1, "Choisis ton mentor")
 cols = st.columns(len(MENTORS))
-for i, m in enumerate(MENTORS):
+
+for i, m_dict in enumerate(MENTORS):
     with cols[i]:
-        is_sel = (st.session_state.coach["id"] == m["id"])
-        if ui_components.mentor_card(m['id'], m['nom'], m['emoji'], m['desc'],m['vibe'], is_sel):
-            state_manager.set_coach(m)
+        # On compare l'ID de l'objet Mentor en session avec le dict des constantes
+        is_sel = (st.session_state.mentor.id == m_dict["id"])
+        
+        if ui_components.mentor_card(m_dict['id'], m_dict['nom'], m_dict['emoji'], m_dict['desc'], m_dict['vibe'], is_sel):
+            # On transforme le dictionnaire en Objet Mentor avant de le stocker
+            new_mentor = Mentor(m_dict)
+            state_manager.set_mentor(new_mentor)
             st.rerun()
 
-titre_nom = st.session_state.coach['punchlines'].get('nom', "Comment t'appelles-tu ?")
+# On récupère l'objet mentor de la session pour plus de clarté
+mentor = st.session_state.mentor
+
+# 2. Surnom
+titre_nom = mentor.get_punchline('nom', "Comment t'appelles-tu ?")
 ui_components.step_title(2, titre_nom)
 prenom_raw = st.text_input("Surnom", placeholder="Garry", label_visibility="collapsed")
 prenom = "".join(x for x in prenom_raw if x.isalnum())[:20] or "Ami"
 
-titre_elo = st.session_state.coach['punchlines'].get('elo', "elo ?")
+# 3. ELO
+titre_elo = mentor.get_punchline('elo', "Quel est ton niveau ?")
 ui_components.step_title(3, titre_elo)
 user_elo = ui_components.elo_selector()
 
-# Lors de la création du JSON pour l'IA :
-#payload["players"]["user"]["elo_rating"] = user_elo
-
-titre_partie = st.session_state.coach['punchlines'].get('pgn', "pgn ?")
+# 4. PGN
+titre_partie = mentor.get_punchline('pgn', "Donne-moi ta partie.")
 ui_components.step_title(4, titre_partie)
+
 label_couleur = "⚪ BLANCS" if st.session_state.joueur_est_blanc else "⚫ NOIRS"
-st.toggle(label_couleur, key="joueur_est_blanc") # Streamlit gère le lien auto avec la clé
-
-pgn_exemple = (
-    "1. e4 { [%eval 0.2] } e5 { [%eval 0.23] } "
-    "2. Nf3 { [%eval 0.25] } Nc6 { [%eval 0.21] } "
-    "3. Bc4 { [%eval 0.15] } Nf6 { [%eval 0.28] }..."
-)
-
-st.caption("""
-    📥 Copie-colle ton PGN avec les **évaluations**.
-""")
+st.toggle(label_couleur, key="joueur_est_blanc")
 
 pgn_input = st.text_area(
     "PGN", 
     height=150, 
-    placeholder=pgn_exemple, 
+    placeholder="1. e4 e5...", 
     label_visibility="collapsed"
 )
 
-# Initialisation des variables par défaut pour éviter les erreurs plus bas
-game = None
+# Initialisation
 move_range = (1, 50)
 
 if pgn_input:
-    from src.chess_analyzer import ChessAnalyzer # Import de ta nouvelle classe
+    from src.chess_analyzer import ChessAnalyzer
     
-    # ÉTAPE 1 : Validation via la méthode statique de la classe
     game, error_message = ChessAnalyzer.validate_pgn(pgn_input)
 
     if error_message:
         st.error(f"⚠️ {error_message}")
     else:
-        st.success("PGN valide !")
-        
-        # ÉTAPE 2 : On crée l'analyseur une seule fois ici
-        # On le met en cache pour ne pas recalculer le DataFrame au moindre clic
         if "analyzer" not in st.session_state or st.session_state.pgn_prev != pgn_input:
             st.session_state.analyzer = ChessAnalyzer(game)
             st.session_state.pgn_prev = pgn_input
 
         analyzer = st.session_state.analyzer
-        
         stats = analyzer.get_stats()
         max_moves = stats.get("total_moves", 1)
         
@@ -87,46 +85,44 @@ if pgn_input:
                 value=(1, min(50, max_moves)),
             )
         else:
-            # S'il n'y a qu'un coup, on fixe la plage sans afficher le slider
-            st.info("Partie très courte détectée (1 seul coup).")
             move_range = (1, 1)
 
-# 3. Affichage du Bouton d'Action
-    button_label = st.session_state.coach['punchlines'].get('analyse', "Analyser")
+    # 5. Bouton d'Action
+    button_label = mentor.get_punchline('analyse', "Analyser")
         
     if st.button(button_label, type="primary", use_container_width=True):
-        # --- CONSTRUCTION DU PAYLOAD ---
         payload = {
             "user": {
                 "name": prenom,
                 "elo": user_elo,
                 "is_white": st.session_state.joueur_est_blanc
             },
-            "coach": st.session_state.coach, # id, nom, emoji, desc, vibe, punchlines
+            # On repasse le mentor (l'objet sera géré dans analysis_engine)
+            "coach": mentor, 
             "analysis_settings": {
                 "move_range": move_range,
                 "pgn_raw": pgn_input
             }
         }
 
-        with st.spinner(f"Analyse par {st.session_state.coach['nom']}..."):
+        with st.spinner(f"Analyse par {mentor.nom}..."):
             from src.analysis_engine import run_analysis_flow
             
-            # On récupère les DEUX éléments maintenant
-            # On passe bien les DEUX arguments : le dictionnaire payload ET l'objet analyzer
-            resultat_analyse, df_debug = run_analysis_flow(payload, st.session_state.analyzer)
+            resultat_analyse, df_debug = run_analysis_flow(
+                payload, 
+                st.session_state.analyzer, 
+                mode=run_mode # <--- On utilise la variable du sidebar
+            )
             
             st.markdown("---")
-
-            # --- NOUVEAU : AFFICHAGE DU GRAPHIQUE ---
             st.subheader("📈 Courbe d'évaluation")
             fig = st.session_state.analyzer.generate_eval_chart(move_range)
             if fig:
                 st.pyplot(fig)
 
-            # 1. On affiche le DataFrame pour débugger (en haut, pour vérifier les données)
-            ui_components.display_debug_data(df_debug)
+            # Debug Data
+            with st.expander("🛠️ Données d'analyse (Debug)"):
+                ui_components.display_debug_data(df_debug)
 
-            # 2. On affiche le résultat (le prompt pour l'instant, plus tard la réponse IA)
-            st.markdown("### 🤖 Analyse du Mentor")
+            st.markdown(f"### 🤖 Analyse de {mentor.nom}")
             st.markdown(resultat_analyse, unsafe_allow_html=True)
