@@ -8,20 +8,20 @@ class PromptBuilder:
 
     # --- BLOCS DE CONSTRUCTION (PRIVES) ---
 
-    def _get_identity_header(self):
+    def _get_mentor_identity(self):
         return f"""
         TON IDENTITÉ :
         Tu es {self.mentor.nom}.
         Style : {self.mentor.vibe}.
         Personnalité : {self.mentor.desc}
-        Ton : {self.mentor.get_punchline('intro')}
+        Ton punchline : {self.mentor.get_punchline('intro')}
         
         CONSIGNES DE TON :
         - Ne sors jamais de ton personnage.
         - Sois direct, pas de blabla d'IA générique.
         """
 
-    def _get_technical_constraints(self):
+    def _get_output_constraints(self):
         return """
         CONTRAINTES DE FORMATAGE (STRICTES) :
         - Langue : Français exclusivement.
@@ -33,64 +33,80 @@ class PromptBuilder:
           (où XX est le coup et Y est W ou B).
         """
 
-    def _get_data_body(self, move_range, moments):
-        stats = self.analyzer.get_stats()
-        # On passe move_range à l'export pour ne donner que les coups utiles
-        history = self.analyzer.export_for_ai(move_range)
-        moments_txt = self._format_moments(moments)
-        
+    def _get_game_metadata(self):
         adversaire = self.analyzer.headers.get('Black' if self.user['is_white'] else 'White', 'Inconnu')
         resultat = self.analyzer.headers.get('Result', 'En cours')
+        return f"""
+        CONTEXTE : {self.user['name']} ({self.user['elo']} ELO) vs {adversaire}
+        RÉSULTAT : {resultat}
+        """
+
+    def _get_game_data_block(self, move_range, is_full_game):
+        pgn = self.analyzer.export_pgn_with_evals(move_range)
+        stats = self.analyzer.get_stats()
+        
+        fen_block = ""
+        # On n'ajoute la FEN que si on n'est PAS au début de la partie
+        if not is_full_game and move_range[0] > 1:
+            # On récupère la position AVANT le premier coup du focus
+            fen_initiale = self.analyzer.get_fen_at_move(move_range[0] - 1)
+            if fen_initiale:
+                fen_block = f"POSITION DE DÉPART (FEN) :\n{fen_initiale}\n"
 
         return f"""
-        DONNÉES DE LA PARTIE :
-        - Élève : {self.user['name']} ({self.user['elo']} ELO) vs {adversaire}
-        - Résultat : {resultat}
-        - Stats : {stats}
-        - Moments critiques détectés : 
-        {moments_txt}
-        - Historique des coups : {history}
+        {fen_block}
+        DONNÉES TECHNIQUES (PGN ANNOTÉ) :
+        {pgn}
+
         """
 
-    def _format_moments(self, moments):
+    def _get_analysis_summary(self, moments):
         if not moments:
-            return "Aucune gaffe majeure détectée sur cette séquence."
-        lines = [f"- Coup {m['move']} ({m['turn']}): {m['notation']} | Delta: {m['delta']} | {m['label']}" for m in moments]
-        return "\n".join(lines)
-
-    # --- ASSEMBLAGES SPÉCIFIQUES ---
-
-    def get_full_game_prompt(self, moments):
-        structure = """
-        MISSION : Analyse globale de la partie.
-        STRUCTURE DE LA RÉPONSE :
-        # Chapitre 1 : Identité de la partie {{CHART_EVAL_TENSION}} {{STATS_TABLE}}
-        # Chapitre 2 : L'Ouverture (Verdict du coach)
-        # Chapitre 3 : Moments Critiques (Analyse détaillée de chaque erreur listée)
-        # Chapitre 4 : Profil & Progrès (Ton avis final et un exercice {{DIAGRAM_MOMENT_XX_Y}})
-        """
-        return f"{self._get_identity_header()}\n{self._get_technical_constraints()}\n{structure}\n{self._get_data_body(None, moments)}"
-
-    def get_focus_prompt(self, move_range, moments):
-        structure = f"""
-        MISSION : Focus chirurgical sur les coups {move_range[0]} à {move_range[1]}.
-        STRUCTURE DE LA RÉPONSE :
-        # Analyse de la séquence (Pourquoi c'était le tournant ?)
-        # Zoom Tactique {{DIAGRAM_MOMENT_XX_Y}}
-        # Conseil spécifique pour cette phase de jeu
-        """
-        return f"{self._get_identity_header()}\n{self._get_technical_constraints()}\n{structure}\n{self._get_data_body(move_range, moments)}"
+            return "POINTS CRITIQUES : Aucun incident majeur détecté."
+        
+        lines = [f"- Coup {m['move']}: {m['notation']} (Delta: {m['delta']}) -> {m['label']}" for m in moments]
+        return "POINTS CRITIQUES (À ANALYSER EN PRIORITÉ) :\n" + "\n".join(lines)
 
     # --- LE POINT D'ENTRÉE UNIQUE ---
 
+# --- LE POINT D'ENTRÉE UNIQUE ---
+
     def get_coach_prompt(self, move_range, moments):
         """
-        Décide quel type de prompt générer en fonction du contexte.
+        Génère le prompt final en assemblant les briques selon le contexte.
         """
-        total_moves = len(self.analyzer.df)
-        is_full_game = move_range[0] <= 1 and move_range[1] >= (total_moves - 1)
+        # 1. Calcul des bornes pour détecter si c'est la partie entière
+        first_move = self.analyzer.df['move'].min()
+        last_move = self.analyzer.df['move'].max()
+        
+        is_full_game = move_range[0] <= first_move and move_range[1] >= last_move
 
+        # 2. Définition de la mission selon le contexte
         if is_full_game:
-            return self.get_full_game_prompt(moments)
+            mission = """
+            MISSION : Analyse globale. 
+            - Balaye l'ouverture, le milieu de jeu et la finale.
+            - Identifie le tournant psychologique de la partie.
+            - Utilise la structure : Identité {{CHART_EVAL_TENSION}}, Ouverture, Moments Critiques, Verdict final.
+            """
         else:
-            return self.get_focus_prompt(move_range, moments)
+            mission = f"""
+            MISSION : Focus chirurgical (Coups {move_range[0]} à {move_range[1]}).
+            - Utilise la FEN fournie pour visualiser la position initiale de cette séquence.
+            - Explique pourquoi ces coups précis ont fait basculer l'évaluation.
+            - Ne parle PAS du reste de la partie.
+            """
+
+        # 3. Assemblage final (Ordre logique : Identité -> Format -> Mission -> Data)
+        prompt = [
+            self._get_mentor_identity(),
+            self._get_output_constraints(),
+            mission,
+            "---",
+            self._get_game_metadata(),
+            self._get_game_data_block(move_range, is_full_game), # <--- Ajout de is_full_game ici
+            self._get_analysis_summary(moments)
+        ]
+
+        return "\n".join(prompt)
+

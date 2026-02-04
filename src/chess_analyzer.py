@@ -185,17 +185,18 @@ class ChessAnalyzer:
         return " | ".join(history)
     
     def get_stats(self):
-        """Retourne un dictionnaire de statistiques globales."""
+        """Retourne un dictionnaire de statistiques globales avec types Python natifs."""
         if self.df.empty:
             return {}
             
+        # On utilise .item() ou on force le cast pour éviter le marquage np.int64
         return {
-            "total_moves": self.df['move'].max(),
-            "avg_delta": self.df['delta'].abs().mean(),
-            "blunders_white": len(self.df[(self.df['turn'] == 'White') & (self.df['delta'] <= -3.0)]),
-            "blunders_black": len(self.df[(self.df['turn'] == 'Black') & (self.df['delta'] >= 3.0)]),
-            "peak_white": self.df['eval'].max(),
-            "peak_black": self.df['eval'].min()
+            "total_moves": int(self.df['move'].max()),
+            "avg_delta": float(round(self.df['delta'].abs().mean(), 2)),
+            "blunders_white": int(len(self.df[(self.df['turn'] == 'White') & (self.df['delta'] <= -3.0)])),
+            "blunders_black": int(len(self.df[(self.df['turn'] == 'Black') & (self.df['delta'] >= 3.0)])),
+            "peak_white": float(self.df['eval'].max()),
+            "peak_black": float(self.df['eval'].min())
         }
     
     def generate_eval_chart(self, move_range):
@@ -220,3 +221,51 @@ class ChessAnalyzer:
         ax.set_title("Courbe d'évaluation")
         return fig
     
+    def get_board_svg(self, move_number, orientation_white=True):
+        """
+        Génère le plateau SVG à un coup précis de manière instantanée.
+        """
+        import chess.svg
+        import base64
+
+        # On récupère la FEN directement dans notre DataFrame (pas de boucle !)
+        fen = self.get_fen_at_move(move_number)
+        if not fen:
+            return ""
+
+        board = chess.Board(fen)
+        side = chess.WHITE if orientation_white else chess.BLACK
+        
+        svg_data = chess.svg.board(
+            board, 
+            orientation=side, 
+            size=350,
+            style=".square.light { fill: #eae9d2; } .square.dark { fill: #4b7399; }"
+        )
+        
+        # On garde le Base64 uniquement si on veut l'afficher dans un bloc HTML custom,
+        # sinon Streamlit peut afficher du SVG directement.
+        return svg_data
+
+    def export_pgn_with_evals(self, move_range=None):
+            """
+            Génère la chaîne PGN annotée à partir du DataFrame de l'analyzer.
+            """
+            df_to_export = self.df
+            if move_range:
+                start, end = move_range
+                # On filtre sur la colonne 'move' qui contient le numéro du coup
+                df_to_export = self.df[self.df['move'].between(start, end)]
+
+            pgn_moves = []
+            for _, row in df_to_export.iterrows():
+                # Correction : ton DF utilise 'turn' (White/Black) et 'move' (int)
+                prefix = f"{row['move']}. " if row['turn'] == 'White' else ""
+                
+                val = row['eval']
+                eval_str = f"{val:+.1f}" if isinstance(val, (int, float)) else str(val)
+                eval_comment = f"{{[%eval {eval_str}]}}"
+                
+                pgn_moves.append(f"{prefix}{row['notation']} {eval_comment}")
+
+            return " ".join(pgn_moves)
