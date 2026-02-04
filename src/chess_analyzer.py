@@ -170,6 +170,64 @@ class ChessAnalyzer:
             })
         return moments
 
+    def get_top_moments(self, is_white_player=True, top_n=3, types=['Blunder', 'Mistake']):
+        """
+        Identifie les N pires moments pour une couleur donnée.
+        is_white_player: True pour Blancs, False pour Noirs.
+        top_n: Nombre de gaffes à extraire.
+        """
+        df_copy = self.df.copy()
+
+        # 1. On définit la cible
+        target_color = 'White' if is_white_player else 'Black'
+        
+        # 2. On calcule la "punition" (perte de points) subie par le joueur
+        # Rappel : eval est vue du côté Blanc. 
+        # Si Blanc joue, une baisse de l'éval (delta < 0) est une erreur.
+        # Si Noir joue, une hausse de l'éval (delta > 0) est une erreur.
+        def calculate_punishment(row):
+            if row['turn'] == 'White':
+                return -row['delta'] if row['delta'] < 0 else 0
+            else:
+                return row['delta'] if row['delta'] > 0 else 0
+
+        df_copy['punishment'] = df_copy.apply(calculate_punishment, axis=1)
+
+        # 3. On filtre par couleur ET par type d'erreur
+        mask = (df_copy['turn'] == target_color)
+        df_filtered = df_copy[mask].copy()
+
+        # 4. Étiquetage selon la punition
+        def label_error(p):
+            if p >= 3.0: return "Blunder"
+            if p >= 1.0: return "Mistake"
+            return "Inaccuracy"
+
+        df_filtered['label'] = df_filtered['punishment'].apply(label_error)
+        
+        # Filtrage des types (Blunder/Mistake uniquement par défaut)
+        df_filtered = df_filtered[df_filtered['label'].isin(types)]
+
+        # 5. On prend le Top N des plus grosses punitions
+        top_df = df_filtered.sort_values(by='punishment', ascending=False).head(top_n)
+
+        moments = []
+        for _, row in top_df.iterrows():
+            moments.append({
+                "move": int(row['move']),
+                "turn": row['turn'],
+                "notation": row['notation'],
+                "eval": float(row['eval']),
+                "delta": float(row['delta']),
+                "punishment": round(float(row['punishment']), 2),
+                "label": row['label'],
+                "fen": row['fen']
+            })
+        
+        # On trie par numéro de coup pour que l'affichage soit chronologique
+        return sorted(moments, key=lambda x: x['move'])
+
+
     def export_for_ai(self, move_range):
         """
         Génère un format Markdown ultra-léger pour le prompt.
@@ -269,3 +327,52 @@ class ChessAnalyzer:
                 pgn_moves.append(f"{prefix}{row['notation']} {eval_comment}")
 
             return " ".join(pgn_moves)
+    
+    def get_lichess_image_url(self, move_number, orientation_white=True):
+        """Génère l'URL d'une image statique via Lichess avec encodage strict."""
+        import urllib.parse
+        
+        fen = self.get_fen_at_move(move_number)
+        if not fen:
+            return None
+        
+        # Étape CRUCIALE : On encode la FEN pour qu'elle soit compatible URL
+        # Cela transforme les espaces en %20 et les caractères spéciaux
+        safe_fen = urllib.parse.quote(fen)
+        
+        orientation = "white" if orientation_white else "black"
+        
+        # On utilise l'URL officielle d'export de Lichess
+        url = f"https://lichess.org/export/fen.png?fen={safe_fen}&orientation={orientation}"
+        print(f"DEBUG URL: {url}") # Regarde dans ton terminal VS Code
+        return url
+
+
+    def get_lichess_embed_url(self, move_number, orientation_white=True):
+        """Génère l'URL pour l'iframe interactif de Lichess."""
+        fen = self.get_fen_at_move(move_number)
+        if not fen:
+            return None
+        
+        import urllib.parse
+        # Pour l'iframe, on remplace les espaces par des underscores dans la FEN
+        # C'est une convention spécifique à l'analyseur Lichess
+        safe_fen = fen.replace(" ", "_")
+        orientation = "white" if orientation_white else "black"
+        
+        # On utilise l'URL d'analyse avec le paramètre theme et orientation
+        return f"https://lichess.org/analysis/standard/{safe_fen}?color={orientation}"
+    
+    def get_fen_before_move(self, move_number):
+        """Récupère la FEN juste avant que le coup spécifié ne soit joué."""
+        # Si on veut voir l'erreur du coup 15, on affiche la position après le coup 14
+        target_move = move_number - 1
+        
+        # On cherche dans le dataframe la FEN du coup précédent
+        row = self.df[self.df['move'] == target_move]
+        
+        if not row.empty:
+            return row.iloc[0]['fen']
+        else:
+            # Si c'est le premier coup, on renvoie la position de départ
+            return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"

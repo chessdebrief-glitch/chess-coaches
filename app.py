@@ -130,5 +130,31 @@ if pgn_input:
             with st.expander("🛠️ Données d'analyse (Debug)"):
                 ui_components.display_debug_data(df_debug)
 
-            st.markdown(f"### 🤖 Analyse de {mentor.nom}")
+            st.markdown(f"### 🤖 Analyse de : {mentor.nom}")
             st.markdown(resultat_analyse, unsafe_allow_html=True)
+
+            # --- AJOUT ICI : AFFICHAGE DES MOMENTS CLÉS ---
+            st.divider()
+            
+            # On récupère les moments critiques via l'analyzer
+            moments_white = st.session_state.analyzer.get_top_moments(
+                is_white_player=st.session_state.joueur_est_blanc,
+                top_n=3
+            )
+
+            moments_black = st.session_state.analyzer.get_top_moments(
+                is_white_player=not st.session_state.joueur_est_blanc,
+                top_n=3
+            )
+
+            # Affichage de la section via le composant UI
+            ui_components.display_moments(
+                st.session_state.analyzer, 
+                moments_white, 
+                st.session_state.joueur_est_blanc
+            )
+            ui_components.display_moments(
+                st.session_state.analyzer, 
+                moments_black, 
+                not st.session_state.joueur_est_blanc
+            )

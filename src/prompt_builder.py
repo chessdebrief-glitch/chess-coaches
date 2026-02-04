@@ -28,9 +28,6 @@ class PromptBuilder:
         - Notation : Algébrique française (ex: Cf3, exd5, O-O).
         - Style : Markdown (titres #, gras **, listes *).
         - INTERDICTION d'introduction ou de conclusion polie.
-        - PLACEHOLDERS OBLIGATOIRES : 
-          Utilise {{CHART_EVAL_TENSION}}, {{STATS_TABLE}} et {{DIAGRAM_MOMENT_XX_Y}} 
-          (où XX est le coup et Y est W ou B).
         """
 
     def _get_game_metadata(self):
@@ -51,7 +48,7 @@ class PromptBuilder:
             # On récupère la position AVANT le premier coup du focus
             fen_initiale = self.analyzer.get_fen_at_move(move_range[0] - 1)
             if fen_initiale:
-                fen_block = f"POSITION DE DÉPART (FEN) :\n{fen_initiale}\n"
+                fen_block = f"POSITION DE DÉPART (FEN) :{fen_initiale}"
 
         return f"""
         {fen_block}
@@ -83,29 +80,28 @@ class PromptBuilder:
 
         # 2. Définition de la mission selon le contexte
         if is_full_game:
-            mission = """
-            MISSION : Analyse globale. 
-            - Balaye l'ouverture, le milieu de jeu et la finale.
-            - Identifie le tournant psychologique de la partie.
-            - Utilise la structure : Identité {{CHART_EVAL_TENSION}}, Ouverture, Moments Critiques, Verdict final.
-            """
+            mission =  """
+        MISSION : Analyse globale. 
+        - Balaye l'ouverture, le milieu de jeu et la finale.
+        - Identifie le tournant psychologique de la partie.
+        - Utilise la structure : Identité {{CHART_EVAL_TENSION}}, Ouverture, Moments Critiques, Verdict final.
+        """
         else:
             mission = f"""
-            MISSION : Focus chirurgical (Coups {move_range[0]} à {move_range[1]}).
-            - Utilise la FEN fournie pour visualiser la position initiale de cette séquence.
-            - Explique pourquoi ces coups précis ont fait basculer l'évaluation.
-            - Ne parle PAS du reste de la partie.
-            """
+        MISSION : Focus chirurgical (Coups {move_range[0]} à {move_range[1]}).
+        - Utilise la FEN fournie pour visualiser la position initiale de cette séquence.
+        - Explique pourquoi ces coups précis ont fait basculer l'évaluation.
+        - Ne parle PAS du reste de la partie.
+        """
 
         # 3. Assemblage final (Ordre logique : Identité -> Format -> Mission -> Data)
         prompt = [
             self._get_mentor_identity(),
             self._get_output_constraints(),
-            mission,
-            "---",
             self._get_game_metadata(),
-            self._get_game_data_block(move_range, is_full_game), # <--- Ajout de is_full_game ici
-            self._get_analysis_summary(moments)
+            mission,
+            self._get_game_data_block(move_range, is_full_game)
+            #self._get_analysis_summary(moments)
         ]
 
         return "\n".join(prompt)
