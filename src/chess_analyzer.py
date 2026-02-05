@@ -15,57 +15,66 @@ class ChessAnalyzer:
         self.df = self._build_dataframe()
 
     @staticmethod
-    def validate_pgn(pgn_string):
-        """
-        Valide une chaîne PGN et la charge en tant qu'objet partie.
-
-            Retourne un tuple (game, error_message).
-            - Si la validation réussit, retourne (objet game, None).
-            - Si la validation échoue, retourne (objet game partiel ou None, message d'erreur).
-        """
-        # 1. On élimine le vide ou les espaces
-        if not pgn_string or not pgn_string.strip():
-            return None, "Le PGN fourni est vide."
-        pgn_io = io.StringIO(pgn_string)
-        
-        # 2. Tentative de lecture par le parser
-        try:
-            game = chess.pgn.read_game(pgn_io)
-        except Exception as e:
-            return None, f"Erreur lors de la lecture du PGN: {e}"
-        # 3. Si le parser n'a rien trouvé (ex: texte aléatoire)
-        if game is None:
-            return None, "Format PGN invalide ou texte illisible."
-        # 4. On vérifie s'il y a des erreurs de syntaxe (ex: 1. e55)
-        if game.errors:
-            return game, f"Erreur de syntaxe dans le PGN : {game.errors[0]}"
-        # 5bis. Vérification de la présence d'évaluations
+    def _check_evaluations(pgn_string):
+        """Vérifie la présence de tags [%eval]."""
         if not re.search(r"\[%eval", pgn_string):
-            # On ne bloque pas forcément, mais on peut retourner un message spécifique
-            # pour prévenir l'utilisateur que l'analyse sera limitée.
-            pass
+            return "Le PGN ne contient aucune donnée d'évaluation ([%eval])."
+        return None
 
-    # 5. On vérifie que le jeu contient des données
-        # On accepte le jeu si : il y a des coups OU si un header au moins est rempli (pas "?")
+    @staticmethod
+    def _check_legality(game):
+        """Vérifie si tous les coups de la partie sont légaux."""
+        board = game.board()
+        for move in game.mainline_moves():
+            if move not in board.legal_moves:
+                return f"Coup illégal détecté: {move.uci()}"
+            board.push(move)
+        return None
+
+    @staticmethod
+    def _has_content(game):
+        """Vérifie si le PGN contient de la substance (coups ou headers)."""
         has_moves = not game.is_end()
-        # On vérifie si au moins un des headers standards contient autre chose que "?"
         important_headers = ["Event", "White", "Black", "FEN"]
         has_headers = any(game.headers.get(h, "?") != "?" for h in important_headers)
+        return has_moves or has_headers
 
-        if not has_moves and not has_headers:
-            return game, "Le PGN ne contient ni en-têtes valides ni coups."
+    @staticmethod
+    def validate_pgn(pgn_string):
+        """Fonction chef d'orchestre pour la validation."""
+        # 1. Validation de base du texte
+        if not pgn_string or not pgn_string.strip():
+            return None, "Le PGN fourni est vide."
 
-        # 6. Vérification des coups légaux
-        board = game.board()
+        # 2. Parsing
         try:
-            for move in game.mainline_moves():
-                if move not in board.legal_moves:
-                    return game, f"Coup illégal détecté: {move.uci()}"
-                board.push(move)
+            game = chess.pgn.read_game(io.StringIO(pgn_string))
         except Exception as e:
-            return game, f"Erreur lors de la vérification des coups légaux: {e}"
+            return None, f"Erreur de lecture: {e}"
 
-        # Si tout est en ordre
+        if game is None:
+            return None, "Format PGN invalide."
+
+        # 3. Validations en cascade
+        if game.errors:
+            return game, f"Erreur de syntaxe: {game.errors[0]}"
+
+        if not ChessAnalyzer._has_content(game):
+            return game, "Le PGN est vide (ni coups, ni en-têtes)."
+
+        # 4. Validation spécifique au projet (évaluations)
+        eval_error = ChessAnalyzer._check_evaluations(pgn_string)
+        if eval_error:
+            return game, eval_error
+
+        # 5. Validation de la logique du jeu
+        try:
+            legality_error = ChessAnalyzer._check_legality(game)
+            if legality_error:
+                return game, legality_error
+        except Exception as e:
+            return game, f"Erreur lors de la vérification légale: {e}"
+
         return game, None
 
     def _parse_pgn(self, pgn_text):

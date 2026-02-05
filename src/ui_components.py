@@ -1,7 +1,9 @@
 # ui_components.py
+import re
 import streamlit as st
 from html import escape # Plus léger que bleach pour des simples chaînes
 import streamlit.components.v1 as components
+from src.utils import extract_clean_text
 
 def mentor_card(mentor_id: str, nom: str, emoji: str, desc: str, vibe: str, is_selected: bool):
     """
@@ -188,3 +190,113 @@ def display_moments(analyzer, moments, is_white):
     # Affichage des cartes
     for m in moments:
         display_critical_moment_card(analyzer, m, is_white)
+
+
+# Dans src/ui_components.py
+
+def render_pgn_section(mentor):
+    """Gère l'affichage de la zone PGN et retourne le texte saisi."""
+    step_title(4, mentor.get_punchline('pgn', "Donne-moi ta partie."))
+    
+    col_toggle, _ = st.columns([1, 2])
+    with col_toggle:
+        label_couleur = "⚪ BLANCS" if st.session_state.joueur_est_blanc else "⚫ NOIRS"
+        st.toggle(label_couleur, key="joueur_est_blanc")
+
+    return st.text_area(
+        "PGN", 
+        height=150, 
+        placeholder="1. e4 e5...", 
+        label_visibility="collapsed"
+    )
+
+def render_analysis_results(mentor, resultat_analyse, analyzer, move_range):
+    """Affiche uniquement les graphiques et stats techniques."""
+    st.markdown("---")
+    
+    # 1. Le Graphique (maintenant il sera toujours là)
+    st.subheader("📈 Courbe d'évaluation")
+    fig = analyzer.generate_eval_chart(move_range)
+    if fig:
+        st.pyplot(fig)
+    else:
+        st.warning("Impossible de générer le graphique d'évaluation.")
+
+    # 2. Les Stats (Optionnel : si tu as une fonction pour ça)
+    # ui_components.display_game_stats(analyzer) 
+
+    # --- IMPORTANT : On a supprimé le st.markdown(resultat_analyse) ici ---
+    # Car il est géré par render_smart_analysis juste après dans app.py
+
+def render_smart_analysis(raw_res, analyzer, is_white):
+    """
+    Transforme la réponse brute de l'IA en une analyse riche avec échiquiers.
+    """
+    # 1. UTILISATION DU FILTRE (La "petite fonction")
+    text = extract_clean_text(raw_res)
+    
+    if not text:
+        return
+
+    # 2. LOGIQUE DE DÉCOUPAGE (Ta "grosse fonction")
+    # On découpe le texte autour des tags [BOARD_MOVE_12]
+    parts = re.split(r'(\[BOARD_MOVE_\d+(?:_white|_black)?\])', text)
+
+    for part in parts:
+        match = re.search(r'BOARD_MOVE_(\d+)', part)
+        
+        if match:
+            move_num = int(match.group(1))
+            # Extraction des données depuis l'analyzer
+            row = analyzer.df[analyzer.df['move'] == move_num]
+            
+            if not row.empty:
+                r = row.iloc[0]
+                moment = {
+                    'move': int(r['move']),
+                    'turn': r['turn'],
+                    'notation': r['notation'],
+                    'delta': r['delta'],
+                    'label': "Analyse Clé",
+                    'punishment': abs(r['delta']),
+                    'fen': r['fen']
+                }
+                # Rendu visuel de l'échiquier
+                display_critical_moment_card(analyzer, moment, is_white)
+            else:
+                st.caption(f"(Position du coup {move_num} introuvable)")
+        
+        else:
+            # Rendu du texte normal entre les échiquiers
+            # On en profite pour nettoyer les placeholders résiduels
+            clean_text = part.replace("{{CHART_EVAL_TENSION}}", "")
+            st.markdown(clean_text, unsafe_allow_html=True)
+
+def display_game_header(analyzer):
+    """Affiche un bandeau avec les infos réelles du match."""
+    # Extraction des données depuis les headers du PGN
+    white = analyzer.headers.get("White", "Joueur Blanc")
+    black = analyzer.headers.get("Black", "Joueur Noir")
+    white_elo = analyzer.headers.get("WhiteElo", "?")
+    black_elo = analyzer.headers.get("BlackElo", "?")
+    result = analyzer.headers.get("Result", "*")
+    date = analyzer.headers.get("Date", "????.??.??")
+    event = analyzer.headers.get("Event", "Partie amicale")
+
+    # Style visuel du bandeau
+    st.markdown(f"#### 🏆 {event} ({date})")
+    
+    col1, col2, col3 = st.columns([2, 1, 2])
+    
+    with col1:
+        st.markdown(f"⚪ **{white}**")
+        st.caption(f"Rating: {white_elo}")
+        
+    with col2:
+        st.markdown(f"<div style='text-align: center; font-size: 24px; font-weight: bold;'>{result}</div>", unsafe_allow_html=True)
+        
+    with col3:
+        st.markdown(f"<div style='text-align: right;'>⚫ **{black}**</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: right; color: gray; font-size: 0.8em;'>Rating: {black_elo}</div>", unsafe_allow_html=True)
+    
+    st.divider()
