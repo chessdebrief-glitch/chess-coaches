@@ -92,7 +92,15 @@ if pgn_input:
             else:
                 analysis_text = str(res)
 
-            # ... reste du code d'affichage
+            ui_components.display_game_header(analyzer)
+            
+            st.subheader("📈 Évolution de l'avantage")
+            # Appel de la fonction de l'analyzer pour récupérer la figure Matplotlib
+            fig = analyzer.generate_eval_chart(range_used)
+            st.pyplot(fig)
+            
+            st.divider() # Séparation visuelle entre le graph et le texte
+
             ui_components.render_smart_analysis(
                 analysis_text, st.session_state.analyzer, st.session_state.joueur_est_blanc
             )
