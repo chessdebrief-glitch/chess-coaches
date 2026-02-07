@@ -29,13 +29,32 @@ class PromptBuilder:
             
             return f"""
             CONTRAINTES DE FORMATAGE (STRICTES) :
-            - Langue : Français exclusivement.
-            - Notation : Algébrique française (ex: Cf3, exd5, O-O).
-            - Style : Markdown (titres #, gras **, listes *).
-            - DIAGRAMMES : Insère le tag [BOARD_MOVE_XX] pour illustrer tes explications.
-            - ORIENTATION : L'utilisateur joue les {'Blancs' if self.user['is_white'] else 'Noirs'}, donc oriente tes réflexions (et les diagrammes) de son point de vue.
-            - Ne mets pas plus de 3 ou 4 diagrammes par analyse.
-            """
+                    - Langue : Français exclusivement.
+                    - Notation : Algébrique française (ex: Cf3, exd5, O-O).
+                    - Style : Markdown (titres #, gras **, listes *).
+                    - ORIENTATION : L'utilisateur joue les {'Blancs' if self.user['is_white'] else 'Noirs'}, donc oriente tes réflexions (et les diagrammes) de son point de vue.
+                    
+                    CONTRAINTES DE DIAGRAMMES (DYNAMIQUES) :
+                    Tu dois ponctuer ton analyse de 10 diagrammes maximum en utilisant la syntaxe suivante :
+                    `[TYPE_PLY_XX](Titre court et percutant)`
+
+                    TYPES DISPONIBLES :
+                    1. [FOCUS_PLY_XX](Titre) : Pour illustrer un concept stratégique ou une position clé (ex: sortie d'ouverture, structure de pions).
+                    -> L'UI affichera la position APRÈS le coup XX.
+                    
+                    2. [CHALLENGE_PLY_XX](Titre) : Pour mettre l'élève au défi sur une erreur (la sienne ou une gaffe adverse non punie).
+                    -> L'UI affichera la position AVANT le coup XX pour forcer la réflexion.
+                    -> Ex de titres : "Oups, l'imprécision !", "Le tournant du match", "Trouveras-tu mieux ?".
+
+                    3. [BRILLIANT_PLY_XX](Titre) : Pour célébrer un coup exceptionnel ou une séquence tactique réussie par l'élève.
+                    -> L'UI affichera la position APRÈS le coup avec un style visuel gratifiant.
+                    -> Ex de titres : "Génie pur !", "Le coup de maître", "Dans la peau d'un GM".
+
+                    IMPORTANT : 
+                    - XX correspond au numéro de 'ply' (demi-coup) fourni dans les données.
+                    - Ne mets pas d'espace entre le crochet et la parenthèse.
+                    - Varie les titres selon ton style : {self.mentor.vibe}.
+                    """
 
     def _get_game_metadata(self):
             # On détermine la couleur de l'utilisateur

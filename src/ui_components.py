@@ -275,49 +275,103 @@ def render_analysis_results(mentor, resultat_analyse, analyzer, move_range):
     # --- IMPORTANT : On a supprimé le st.markdown(resultat_analyse) ici ---
     # Car il est géré par render_smart_analysis juste après dans app.py
 
+import re
+
 def render_smart_analysis(raw_res, analyzer, is_white):
     """
-    Transforme la réponse brute de l'IA en une analyse riche avec échiquiers.
+    Parse la réponse de l'IA et injecte les composants UI dynamiques.
     """
-    # 1. UTILISATION DU FILTRE (La "petite fonction")
-    text = extract_clean_text(raw_res)
+    # Pattern : [TYPE_PLY_XX](Titre Optionnel)
+    # Groupe 1 : TYPE | Groupe 2 : PLY | Groupe 3 : TITRE
+    pattern = r'\[(FOCUS|CHALLENGE|BRILLIANT)_PLY_(\d+)\](?:\((.*?)\))?'
     
-    if not text:
-        return
-
-    # 2. LOGIQUE DE DÉCOUPAGE (Ta "grosse fonction")
-    # On découpe le texte autour des tags [BOARD_MOVE_12]
-    parts = re.split(r'(\[BOARD_MOVE_\d+(?:_white|_black)?\])', text)
-
-    for part in parts:
-        match = re.search(r'BOARD_MOVE_(\d+)', part)
-        
-        if match:
-            move_num = int(match.group(1))
-            # Extraction des données depuis l'analyzer
-            row = analyzer.df[analyzer.df['move'] == move_num]
-            
-            if not row.empty:
-                r = row.iloc[0]
-                moment = {
-                    'move': int(r['move']),
-                    'turn': r['turn'],
-                    'notation': r['notation'],
-                    'delta': r['delta'],
-                    'label': "Analyse Clé",
-                    'punishment': abs(r['delta']),
-                    'fen': r['fen']
-                }
-                # Rendu visuel de l'échiquier
-                display_critical_moment_card(analyzer, moment, is_white)
-            else:
-                st.caption(f"(Position du coup {move_num} introuvable)")
-        
+    # On découpe le texte en gardant les délimiteurs pour ne pas perdre le texte
+    parts = re.split(pattern, raw_res)
+    
+    i = 0
+    while i < len(parts):
+        # Si on tombe sur un texte normal (hors groupes de capture)
+        if i % 4 == 0:
+            if parts[i]:
+                st.markdown(parts[i])
+            i += 1
         else:
-            # Rendu du texte normal entre les échiquiers
-            # On en profite pour nettoyer les placeholders résiduels
-            clean_text = part.replace("{{CHART_EVAL_TENSION}}", "")
-            st.markdown(clean_text, unsafe_allow_html=True)
+            # On est dans une séquence de groupes capturés : Type, Ply, Titre
+            tag_type = parts[i]
+            ply_num = int(parts[i+1])
+            custom_title = parts[i+2]
+            
+            # --- Logique de configuration de la carte ---
+            config = {
+                "FOCUS": {"color": "blue", "title": "🔍 ANALYSE", "quiz": False},
+                "CHALLENGE": {"color": "orange", "title": "🧩 À VOUS DE JOUER", "quiz": True},
+                "BRILLIANT": {"color": "green", "title": "✨ COUP DE GÉNIE", "quiz": False}
+            }
+            
+            current_config = config.get(tag_type)
+            final_title = custom_title.upper() if custom_title else current_config["title"]
+            
+            # Récupération de la position (Ply-1 si c'est un Challenge)
+            target_ply = ply_num - 1 if current_config["quiz"] else ply_num
+            fen = analyzer.get_fen_by_ply(target_ply)
+            
+            # Récupération des données du coup pour le contexte du quiz
+            moment_data = None
+            if current_config["quiz"]:
+                row = analyzer.df[analyzer.df['ply'] == ply_num]
+                if not row.empty:
+                    moment_data = row.iloc[0].to_dict()
+
+            # --- Affichage du composant ---
+            display_enhanced_card(
+                fen=fen,
+                title=final_title,
+                color=current_config["color"],
+                is_white=is_white,
+                show_quiz=current_config["quiz"],
+                moment_data=moment_data
+            )
+            
+            i += 3 # On saute les 3 groupes capturés pour revenir au texte
+
+def display_enhanced_card(fen, title, color, is_white, show_quiz=False, moment_data=None):
+    import uuid
+    # On génère un ID unique pour que chaque board soit indépendant
+    uid = str(uuid.uuid4())[:8]
+    board_id = f"board_{uid}"
+    orientation = "white" if is_white else "black"
+    fen_pieces = fen.split(' ')[0]
+
+    with st.container(border=True):
+        st.markdown(f"##### :{color}[{title}]")
+        
+        col1, col2 = st.columns([1.2, 1])
+        with col1:
+            # Code HTML + JS pour Chessboard.js
+            html_code = f"""
+            <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+            <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+            <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+            <div id="{board_id}" style="width: 250px"></div>
+            <script>
+                var board = Chessboard('{board_id}', {{
+                    position: '{fen_pieces}',
+                    orientation: '{orientation}',
+                    showNotation: true,
+                    pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{{piece}}.png'
+                }});
+            </script>
+            """
+            st.components.v1.html(html_code, height=270)
+
+        with col2:
+            if show_quiz:
+                st.write("**Ton tour !**")
+                if moment_data:
+                    st.caption(f"Tu as joué : {moment_data['notation']}")
+                st.button("Vérifier", key=f"btn_{uid}")
+            else:
+                st.write("Analyse positionnelle.")
 
 def display_game_header(analyzer):
     """Affiche un bandeau avec les infos réelles du match."""

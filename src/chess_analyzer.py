@@ -385,3 +385,21 @@ class ChessAnalyzer:
         else:
             # Si c'est le premier coup, on renvoie la position de départ
             return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        
+
+    def get_fen_by_ply(self, ply_number):
+            """
+            Récupère la FEN à un ply (demi-coup) précis.
+            Ply 0 = Position initiale.
+            """
+            if ply_number <= 0:
+                return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+            
+            # On cherche dans le dataframe la ligne où ply correspond
+            res = self.df[self.df['ply'] == ply_number]
+            
+            if not res.empty:
+                return res.iloc[0]['fen']
+            
+            # Si on ne trouve pas (ex: ply trop élevé), on renvoie la dernière position connue
+            return self.df.iloc[-1]['fen'] if not self.df.empty else None

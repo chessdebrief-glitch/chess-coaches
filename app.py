@@ -12,7 +12,8 @@ ui_components.header_section()
 
 with st.sidebar:
     st.title("⚙️ Réglages")
-    mode_ia = st.toggle("Activer l'IA (Gemini)", value=False)
+    # Toggle activé par défaut et renonmmé "Analyse IA"
+    mode_ia = st.toggle("Activer l'IA", value=True)
     run_mode = "api" if mode_ia else "debug"
 
 # --- 2. ÉTAPE 1 : MENTOR ---
@@ -67,22 +68,31 @@ if pgn_input:
                 st.session_state.derniere_analyse = (res, df_debug, move_range)
                 st.rerun() # On relance pour passer à l'affichage en bas
 
-        # --- 6. ZONE D'AFFICHAGE BRUTE ---
         # --- 6. ZONE D'AFFICHAGE ---
         if "derniere_analyse" in st.session_state:
             res, df_debug, range_used = st.session_state.derniere_analyse
-            ui_components.display_game_header(analyzer)
-
-            # A. Affiche la courbe d'éval
-            ui_components.render_analysis_results(
-                mentor, res, st.session_state.analyzer, range_used
-            )
             
-            # B. Affiche le texte du Maître Zen avec les échiquiers intégrés
-            ui_components.render_smart_analysis(
-                res, st.session_state.analyzer, st.session_state.joueur_est_blanc
-            )
+            # Extraction sécurisée du texte
+            analysis_text = ""
+            
+            if isinstance(res, list):
+                # Si c'est une liste de dictionnaires, on cherche la clé 'text' ou 'content'
+                extracted_parts = []
+                for item in res:
+                    if isinstance(item, dict):
+                        # On prend la première valeur string qu'on trouve ou une clé spécifique
+                        text_val = item.get('text') or item.get('content') or str(item)
+                        extracted_parts.append(text_val)
+                    else:
+                        extracted_parts.append(str(item))
+                analysis_text = "\n\n".join(extracted_parts)
+            
+            elif isinstance(res, dict):
+                analysis_text = res.get('text') or res.get('content') or str(res)
+            else:
+                analysis_text = str(res)
 
-            # C. Debug (toujours utile)
-            #with st.expander("🔍 Debug : Objet technique reçu"):
-            #    st.json(res)    
+            # ... reste du code d'affichage
+            ui_components.render_smart_analysis(
+                analysis_text, st.session_state.analyzer, st.session_state.joueur_est_blanc
+            )
