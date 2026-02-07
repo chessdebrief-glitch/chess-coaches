@@ -268,24 +268,52 @@ class ChessAnalyzer:
     
     def generate_eval_chart(self, move_range):
         """
-        Génère un graphique Matplotlib simple de l'évaluation.
+        Génère un graphique d'évaluation stylisé pour le Dark Mode.
         """
         import matplotlib.pyplot as plt
-        
+        import numpy as np
+
         start, end = move_range
         df_slice = self.get_analysis_slice(move_range)
         
-        fig, ax = plt.subplots(figsize=(10, 4))
-        # On lisse un peu l'éval pour le graphique (clip à -5/+5)
-        evals = df_slice['eval'].clip(-5, 5)
-        plies = df_slice['ply']
+        # Configuration du style sombre
+        plt.style.use('dark_background')
+        fig, ax = plt.subplots(figsize=(10, 4), facecolor='#0e1117') # Couleur de fond Streamlit
+        ax.set_facecolor('#0e1117')
+
+        # Préparation des données
+        plies = df_slice['ply'].values
+        # On clip à 4 pour garder de la lisibilité (au-delà, c'est gagné de toute façon)
+        evals = df_slice['eval'].clip(-4, 4).values 
+
+        # Remplissage dégradé (Blancs - Vert / Noirs - Violet)
+        ax.fill_between(plies, evals, 0, where=(evals >= 0), 
+                        interpolate=True, color='#2ecc71', alpha=0.4, label='Avantage Blancs')
+        ax.fill_between(plies, evals, 0, where=(evals < 0), 
+                        interpolate=True, color='#9b59b6', alpha=0.4, label='Avantage Noirs')
+
+        # Ligne principale plus douce
+        ax.plot(plies, evals, color='#3498db', linewidth=2.5, alpha=0.8)
+
+        # Axe central et grille
+        ax.axhline(0, color='white', linewidth=1, alpha=0.5)
+        ax.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.3)
+
+        # Personnalisation des axes
+        ax.set_title("ANALYSE DE LA PARTIE", fontsize=12, pad=15, color='white', fontweight='bold')
+        ax.set_xlabel("Demi-coups (Ply)", fontsize=9, color='gray')
+        ax.set_ylabel("Évaluation (CP)", fontsize=9, color='gray')
         
-        ax.fill_between(plies, evals, 0, where=(evals >= 0), color='gray', alpha=0.3)
-        ax.fill_between(plies, evals, 0, where=(evals < 0), color='black', alpha=0.3)
-        ax.plot(plies, evals, color='blue', linewidth=2)
-        
-        ax.axhline(0, color='white', linewidth=0.8, linestyle='--')
-        ax.set_title("Courbe d'évaluation")
+        # Légende stylisée
+        legend = ax.legend(loc='upper left', frameon=True, fontsize=8)
+        legend.get_frame().set_facecolor('#1e2130')
+        legend.get_frame().set_edgecolor('gray')
+
+        # Supprimer les bordures inutiles
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+
+        plt.tight_layout()
         return fig
     
     def get_board_svg(self, move_number, orientation_white=True):
