@@ -14,11 +14,13 @@ class PromptBuilder:
         Tu es {self.mentor.nom}.
         Style : {self.mentor.vibe}.
         Personnalité : {self.mentor.desc}
-        Ton punchline : {self.mentor.get_punchline('intro')}
+        Ta punchline : {self.mentor.get_punchline('intro')}
         
         CONSIGNES DE TON :
         - Ne sors jamais de ton personnage.
         - Sois direct, pas de blabla d'IA générique.
+        - Adapte toi à l'élo de ton élève : self.user['elo'].
+
         """
 
     def _get_output_constraints(self):
@@ -46,7 +48,7 @@ class PromptBuilder:
             RÉSULTAT : {resultat}
             
             MISSION CRITIQUE : 
-            - Tu analyses la partie du point de vue de {self.user['name']}.
+            - Tu analyses la partie de ton élève {self.user['name']}.
             - {self.user['name']} joue avec les {couleur_user}.
             - Adresse-toi à lui directement ("Tu", "Ton", "Tes").
             - Ne te trompe pas de camp : si tu parles d'une erreur, assure-toi que c'est bien {self.user['name']} qui l'a commise avant de le réprimander.
@@ -95,36 +97,13 @@ class PromptBuilder:
         # 2. Définition de la mission selon le contexte
         if is_full_game:
             mission =  """
-MISSION : Analyse approfondie pour joueur de club (Niveau requis : précis et conceptuel). 
-            
-            1. STRATÉGIE & STRUCTURE :
-               - Nomme l'ouverture précise. Identifie qui est sorti de la théorie le premier et avec quel avantage (numérique et positionnel).
-               - Analyse la structure de pions : identifie les "pions candidats", les cases faibles (trous) et les chaînes de pions.
-               - Évalue l'espace et la coordination : les pièces sont-elles harmonieuses ou se marchent-elles dessus ?
-
-            2. LE MOMENT DE VÉRITÉ (Coup XX) :
-               - Repère la bascule : est-ce un effondrement tactique (calcul) ou une dérive stratégique (plan erroné) ?
-               - Analyse la psychologie : passivité excessive, panique face à une menace fantôme, ou gourmandise fatale.
-
-            STRUCTURE DE RÉPONSE (STRICTE) :
-            
-            # ♟️ L'Ouverture : [Nom de l'Ouverture]
-            [Analyse théorique et sortie de bibliothèque]
-            
-            # 🌪️ Le Tournant (Coup XX)
-            {{CHART_EVAL_TENSION}}
-            [Analyse de la bascule psychologique et technique]
-            
-            # 🧩 Moments Critiques
-            [Insère 3-4 diagrammes [BOARD_MOVE_XX] avec une analyse pointue des variantes]
-            
-            # 🧠 Profil Psychologique
-            [Commentaire sur la gestion du risque et du temps de l'utilisateur]
-            
-            # ⚖️ Conseil pour progresser
-            - **Le point fort :** [Compliment sur un coup ou une phase précise]
-            - **L'axe de travail :** [Un conseil concret pour le prochain tournoi]
-            
+            Ton rôle est d'effectuer une revue technique et psychologique de la rencontre en suivant ce plan strict :
+            - Résumé de l'Ouverture : Identifie l'ouverture jouée. Indique qui est sorti de l'ouverture avec l'avantage et pourquoi (développement, structure, espace).
+            - Le Moment Critique : Identifie le coup précis (ou la séquence) où l'avantage a basculé. Explique ce qui a été manqué (une tactique, un plan stratégique, une menace adverse).
+            - Analyse Comparative : Pour les erreurs majeures (Blunders/Mistakes), propose la variante recommandée par le moteur et explique la logique derrière cette alternative.
+            - Profil de Joueur : Donne-moi un feedback sur mon style de jeu lors de cette partie (ex: trop passif, prend des risques inutiles, solide en défense) et compare le à des joueurs connus
+            - Le Conseil 'Next Level' : Donne-moi un seul concept ou principe à retenir pour mes 5 prochaines parties afin de ne pas répéter ce type d'erreur.
+          
         """
 
         else:

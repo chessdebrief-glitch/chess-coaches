@@ -126,7 +126,7 @@ def display_critical_moment_card222(analyzer, moment, is_white):
             fen_url = f"https://lichess.org/analysis/{moment['fen'].replace(' ', '_')}"
             st.link_button("🔍 Analyser sur Lichess", fen_url, use_container_width=True)
 
-def display_critical_moment_card(analyzer, moment, is_white):
+def display_critical_moment_card333(analyzer, moment, is_white):
     # On récupère la FEN AVANT le coup
     fen_before = analyzer.get_fen_before_move(moment['move'])
     fen_pieces_only = fen_before.split(' ')[0]
@@ -167,6 +167,53 @@ def display_critical_moment_card(analyzer, moment, is_white):
                 st.write(f"Perte d'évaluation : {moment['punishment']} pions")
 
             # Bouton pour aller voir la solution
+            url_solution = f"https://lichess.org/analysis/{fen_before.replace(' ', '_')}"
+            st.link_button("💡 Voir la solution", url_solution, use_container_width=True)
+
+def display_critical_moment_card(analyzer, moment, is_white):
+    # 1. On récupère la FEN AVANT le coup fautif
+    fen_before = analyzer.get_fen_before_move(moment['move'])
+    fen_pieces_only = fen_before.split(' ')[0]
+    
+    # 2. L'orientation doit être celle du joueur (pour qu'il voie l'échiquier de son point de vue)
+    orientation = 'white' if is_white else 'black'
+
+    with st.container(border=True):
+        st.markdown(f"### 🧩 Défi : Coup {moment['move']}")
+        
+        col1, col2 = st.columns([1.2, 1])
+        
+        with col1:
+            html_board = f"""
+            <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+            <div id="board_{moment['move']}" style="width: 100%; max-width: 280px; margin: auto;"></div>
+            <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+            <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+            <script>
+                var board = Chessboard("board_{moment['move']}", {{
+                    position: '{fen_pieces_only}',
+                    orientation: '{orientation}',
+                    draggable: false,
+                    pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{{piece}}.png'
+                }});
+            </script>
+            """
+            components.html(html_board, height=300)
+            
+        with col2:
+            # Correction ici : moment['turn'] indique qui a joué le coup. 
+            # Si c'est un moment critique pour vous, c'est à vous de jouer.
+            trait_au_joueur = "Blancs" if moment['turn'] == "White" else "Noirs"
+            
+            st.write(f"**Le trait est aux {trait_au_joueur}**")
+            st.info("Quelle est la meilleure suite ici ?")
+            
+            with st.expander("Voir ton erreur..."):
+                st.write(f"Tu as joué : **{moment['notation']}**")
+                color = "red" if moment['label'] == 'Blunder' else "orange"
+                st.markdown(f"Critique : :{color}[{moment['label']}]")
+                st.write(f"Perte : {abs(moment['delta']):.1f} pions")
+
             url_solution = f"https://lichess.org/analysis/{fen_before.replace(' ', '_')}"
             st.link_button("💡 Voir la solution", url_solution, use_container_width=True)
 
