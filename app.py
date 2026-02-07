@@ -31,7 +31,7 @@ mentor = st.session_state.mentor
 
 # --- 3. ÉTAPE 2 & 3 : INFO JOUEUR ---
 ui_components.step_title(2, mentor.get_punchline('nom'))
-prenom_raw = st.text_input("Surnom", placeholder="Garry", label_visibility="collapsed")
+prenom_raw = st.text_input("Surnom", placeholder="Petit Magnus", label_visibility="collapsed")
 prenom = "".join(x for x in prenom_raw if x.isalnum())[:20] or "Ami"
 
 ui_components.step_title(3, mentor.get_punchline('elo'))

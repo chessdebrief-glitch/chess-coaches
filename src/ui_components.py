@@ -40,26 +40,45 @@ def step_title(num: int, text: str):
     st.markdown(f'<p class="step-header">{num}. {safe_text}</p>', unsafe_allow_html=True)
 
 def elo_selector():
-    """Composant de sélection du niveau ELO."""
-    # On utilise une colonne pour centrer ou ajuster le slider
+    """Composant de sélection du niveau ELO : Précis pour le club & Standard FIDE pour l'élite."""
     elo = st.slider(
-        label="Glisse pour définir ton niveau",
-        min_value=1000,
-        max_value=2500,
+        label="Ton niveau ELO",
+        min_value=600,
+        max_value=2900,
         value=1500,
         step=50,
-        help="Ceci aide le coach à adapter ses explications à ton niveau technique."
+        help="Permet au mentor d'adapter son vocabulaire technique à ton niveau réel."
     )
     
-    # Petit feedback visuel sur le niveau
-    if elo < 1400:
-        label = "Débutant / Intermédiaire"
-    elif elo < 1900:
-        label = "Confirmé"
-    else:
-        label = "Expert / Maître"
+    # --- 1. Niveaux de Progression (La base du club) ---
+    if elo < 1000:
+        label = "Débutant (Apprentissage des bases)"
+    elif elo < 1200:
+        label = "Initié (Niveau Club IV)"
+    elif elo < 1400:
+        label = "Intermédiaire (Niveau Club III)"
+    elif elo < 1600:
+        label = "Confirmé (Niveau Club II)"
+    elif elo < 1850:
+        label = "Joueur de Club Solide (Niveau Club I)"
+    elif elo < 2000:
+        label = "Joueur de Compétition Expert"
         
-    st.info(f"Niveau configuré : **{elo}** ({label})")
+    # --- 2. Titres Officiels FIDE (L'élite) ---
+    elif elo < 2200:
+        label = "Prétendant au titre FIDE"
+    elif elo < 2300:
+        label = "Candidat Maître (CM)"
+    elif elo < 2400:
+        label = "Maître de la FIDE (MF)"
+    elif elo < 2500:
+        label = "Maître International (MI)"
+    elif elo < 2600:
+        label = "Grand Maître International (GMI)"
+    else:
+        label = "Super GMI (Élite Mondiale)"
+        
+    st.info(f"Niveau configuré : **{elo}** — *{label}*")
     return elo
 
 def display_debug_data(df):
