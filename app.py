@@ -15,6 +15,7 @@ with st.sidebar:
     # Toggle activé par défaut et renonmmé "Analyse IA"
     mode_ia = st.toggle("Activer l'IA", value=True)
     run_mode = "api" if mode_ia else "debug"
+    initial_sidebar_state="collapsed"
 
 # --- 2. ÉTAPE 1 : MENTOR ---
 ui_components.step_title(1, "Choisis ton mentor")
